@@ -1,0 +1,7 @@
+groups:
+  - name: echo
+    language: python3.11
+    filename: echo.py
+    endpoints:
+      - name: router
+    dependencies: /fixtures/echo_requirements.txt
