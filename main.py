@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -16,19 +17,22 @@ from manifest import Manifest
 
 # TODO
 #
-# 1. Generate a WORKSPACE / BUILD file in a tmp directory,
+# 1. (DONE)
+#    Generate a WORKSPACE / BUILD file in a tmp directory,
 #    build a Python library which defines a set of endpoints,
 #    load it from an ASGI server,
 #    and serve a request.
 #
-# 2. Do ^ but for multiple endpoints with multiple manifest.yamls.
+# 2. (TODO)
+#    Do ^ but for multiple endpoints with multiple groups.
 #    Deal with things like:
 #    - Make sure you don't load rules_python multiple times.
 #    - Define one toolchain per language being used.
 #    - Define one venv per venv.
 #    - Load both environments into separate ASGI servers & host.
 #
-# 3. Try to run multiple venvs under a single ASGI.
+# 3. (TODO)
+#    Try to run multiple venvs under a single ASGI.
 #    - Different Python processes with different venvs?
 #    - Different venvs for different call paths?
 #
@@ -90,6 +94,9 @@ def generate_python_toolchain(language: Language) -> str:
         requirements_lock = "//:requirements.txt",
         python_interpreter_target = interpreter,
     )
+
+    load("@server_deps//:requirements.bzl", install_deps_server = "install_deps")
+    install_deps_server()
     """
     )
 
@@ -275,10 +282,12 @@ def main(args: list[str]) -> None:
         for group in manifest.groups:
             targets.append(f"//:{group.name}")
 
-        cat_dir(tmp_path)
+        # TODO: remove this later...
+        if "DEBUG" in os.environ:
+            cat_dir(tmp_path)
+            print(tmp_path)
+            input()
 
-        print(tmp_path)
-        input()
         subprocess.check_call(
             (
                 "bazelisk",
