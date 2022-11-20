@@ -4,6 +4,24 @@ import textwrap
 from manifest import Group, Language, Manifest
 
 
+# TODO
+#
+# 1. Generate a WORKSPACE / BUILD file in a tmp directory,
+#    build a Python library which defines a set of endpoints,
+#    load it from an ASGI server,
+#    and serve a request.
+#
+# 2. Do ^ but for multiple endpoints with multiple manifest.yamls.
+#    Deal with things like:
+#    - Make sure you don't load rules_python multiple times.
+#    - Define one toolchain per language being used.
+#    - Define one venv per venv.
+#    - Load both environments into separate ASGI servers & host.
+#
+# 3. Try to run multiple venvs under a single ASGI.
+#    - Different Python processes with different venvs?
+#    - Different venvs for different call paths?
+
 HTTP_ARCHIVE = """\
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 """
