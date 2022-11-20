@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import partial
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,13 @@ from manifest import Group, Language, Manifest
 # 3. Try to run multiple venvs under a single ASGI.
 #    - Different Python processes with different venvs?
 #    - Different venvs for different call paths?
+#
+#
+#
+# OTHER RANDOM THOUGHTS:
+#
+# - This is mostly filling in templates. How about I move it over to jinja2?
+#   Then I can get away from most of this manual text munging.
 
 HTTP_ARCHIVE = """\
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -45,8 +53,8 @@ load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 """
 
 
-PY_LIBRARY = """\
-load("@rules_python//python:defs.bzl", "py_library")
+PY_RULES = """\
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 """
 
 
@@ -148,10 +156,52 @@ def generate_group_target(group: Group) -> str:
     """)
 
 
+def generate_group_import(group: Group):
+    directory, _, filename = group.filename.rpartition("/")
+    if not filename:
+        filename = directory
+        directory = ""
+
+    dot_directory = directory.replace("/", ".")
+    underscore_directory = directory.replace("/", "_")
+    filename, _, _ = filename.partition(".")
+    fully_qualified_name = f"{underscore_directory}_{filename}"
+
+    return textwrap.dedent(f"""\
+    from {dot_directory} import {filename} as {fully_qualified_name}
+    app.include_router({fully_qualified_name}.router)
+    """)
+
+
+def generate_server_py(manifest: Manifest) -> str:
+    server = (Path.cwd() / "server.py").read_text()
+    rendered_group_imports = "\n\n".join(
+        generate_group_import(group)
+        for group in manifest.groups
+    )
+
+    return server.replace("# {{REPLACE_ME}}\n", rendered_group_imports)
+
+
+def generate_server_target(manifest: Manifest) -> str:
+    rendered_deps = ",".join(
+        f"\"{group.name}\""
+        for group in manifest.groups
+    )
+    return textwrap.dedent(f"""
+    py_binary(
+        name = "server",
+        srcs = [":server.py"],
+        deps = [{rendered_deps}],
+    )
+    """)
+
+
 def generate_build(manifest: Manifest) -> str:
     return "\n".join([
-        PY_LIBRARY,
+        PY_RULES,
         *(generate_group_target(group) for group in manifest.groups),
+        generate_server_target(manifest),
     ])
 
 
@@ -182,8 +232,9 @@ def main(args: list[str]) -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
 
-        (tmp_path / "WORKSPACE").write_text(generate_workspace(manifest))
         (tmp_path / "BUILD").write_text(generate_build(manifest))
+        (tmp_path / "WORKSPACE").write_text(generate_workspace(manifest))
+        (tmp_path / "server.py").write_text(generate_server_py(manifest))
 
         file_sets: dict[Path, set[str]] = defaultdict(set)
         cwd = Path.cwd()
@@ -201,6 +252,7 @@ def main(args: list[str]) -> None:
 
         for path, file_set in file_sets.items():
             if path == tmp_path:
+                # TODO: implement this
                 raise NotImplementedError
             (path / "BUILD").write_text(generate_file_exports(file_set))
 
@@ -211,11 +263,8 @@ def main(args: list[str]) -> None:
         subprocess.check_call(
             (
                 "bazelisk",
-                "build",
-                *(
-                    f"//:{group.name}"
-                    for group in manifest.groups
-                ),
+                "run",
+                "//:server",
             ),
             cwd=tmp_path,
         )
