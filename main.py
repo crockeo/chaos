@@ -1,8 +1,9 @@
-import subprocess
 import sys
 import textwrap
 import tempfile
 from pathlib import Path
+from packaging.requirements import InvalidRequirement
+from packaging.requirements import Requirement
 
 from manifest import Group, Language, Manifest
 
@@ -64,11 +65,7 @@ def generate_python_toolchain(language: Language) -> str:
 
 
 def generate_pip_parse(group: Group) -> str:
-    if not group.dependencies.startswith("/"):
-        # TODO: exception type
-        raise Exception("must define fully qualified deps file")
-
-    target_parts = group.dependencies.split("/")[1:]
+    target_parts = group.dependencies.split("/")
     if not target_parts:
         # TODO: exception type
         raise Exception("asdfasdfad")
@@ -105,20 +102,43 @@ def generate_workspace(manifest: Manifest) -> str:
     ])
 
 
-def load_deps(group: Group) -> str:
-    raise NotImplementedError
+def load_deps(requirement_name: str, group: Group) -> list[str]:
+    deps_path = Path.cwd() / group.dependencies
+
+    deps = []
+    for line in deps_path.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("#"):
+            continue
+
+        # NOTE: This requires that requirement files
+        # have no other text except for comments and requirements.
+        req = Requirement(line)
+        deps.append(
+            f"{requirement_name}(\"{req.name}\")"
+        )
+    return deps
 
 
 def generate_group_target(group: Group) -> str:
     requirement_name = f"requirement_{group.name}"
+
+    # TODO: this is disgusting little codegen and i hate it
+    deps = load_deps(requirement_name, group)
+    deps = [
+        f"            {dep}"
+        for dep in deps
+    ]
+    rendered_deps = "\n".join(deps)
+    rendered_deps = f"\n{rendered_deps}\n        "
+
     return textwrap.dedent(f"""\
     load(f"@{group.name}_deps//:requirements.bzl", "{requirement_name}")
 
     py_library(
         name = "{group.name}"
         srcs = ["{group.filename}"],
-        deps = [
-        ],
+        deps = [{rendered_deps}],
     )
     """)
 

@@ -2,7 +2,7 @@ groups:
   - name: echo
     # NOTE: python3.11 not supported by Bazel yet :(
     language: python3.10
-    filename: echo.py
+    filename: fixtures/echo.py
     endpoints:
       - name: router
-    dependencies: /fixtures/echo_requirements.txt
+    dependencies: fixtures/echo_requirements.txt
