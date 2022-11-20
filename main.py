@@ -1,3 +1,6 @@
+from collections import defaultdict
+import shutil
+import subprocess
 import sys
 import textwrap
 import tempfile
@@ -47,6 +50,13 @@ load("@rules_python//python:defs.bzl", "py_library")
 """
 
 
+def filename_as_target(filename: str) -> str:
+    directory, _, filename = filename.rpartition("/")
+    if not filename:
+        return f"//:{directory}"
+    return f"//{directory}:{filename}"
+
+
 def generate_python_toolchain(language: Language) -> str:
     language_id, _ = language.value
     if language_id != "python":
@@ -59,8 +69,8 @@ def generate_python_toolchain(language: Language) -> str:
         python_version = "{language.formatted_version()}",
     )
 
-    load("@{language.toolchain_name()}//:defs.bzl", "interpeter")
-    load("@rules_python//:pip.bzl", "pip_parse")
+    load("@{language.toolchain_name()}//:defs.bzl", "interpreter")
+    load("@rules_python//python:pip.bzl", "pip_parse")
     """)
 
 
@@ -82,7 +92,7 @@ def generate_pip_parse(group: Group) -> str:
         requirements_lock = "{target}",
     )
 
-    load("@{pip_repo_name}//:requirements.bzl", "install_deps_{group.name}")
+    load("@{pip_repo_name}//:requirements.bzl", install_deps_{group.name} = "install_deps")
     install_deps_{group.name}()""")
 
 
@@ -126,18 +136,18 @@ def generate_group_target(group: Group) -> str:
     # TODO: this is disgusting little codegen and i hate it
     deps = load_deps(requirement_name, group)
     deps = [
-        f"            {dep}"
+        f"            {dep},"
         for dep in deps
     ]
     rendered_deps = "\n".join(deps)
     rendered_deps = f"\n{rendered_deps}\n        "
 
     return textwrap.dedent(f"""\
-    load(f"@{group.name}_deps//:requirements.bzl", "{requirement_name}")
+    load("@{group.name}_deps//:requirements.bzl", {requirement_name} = "requirement")
 
     py_library(
-        name = "{group.name}"
-        srcs = ["{group.filename}"],
+        name = "{group.name}",
+        srcs = ["{filename_as_target(group.filename)}"],
         deps = [{rendered_deps}],
     )
     """)
@@ -150,6 +160,17 @@ def generate_build(manifest: Manifest) -> str:
     ])
 
 
+def generate_file_exports(file_set: set[str]) -> str:
+    exports = [
+        f"\"{filename}\""
+        for filename in sorted(file_set)
+    ]
+    exports = ",".join(exports)
+    return textwrap.dedent(f"""\
+    exports_files([{exports}])
+    """)
+
+
 def print_usage() -> None:
     print("Correct usage:", file=sys.stderr)
     print("  python main.py <path to manifest>", file=sys.stderr)
@@ -160,7 +181,7 @@ def cat_dir(dir: Path) -> None:
         print("=" * len(path.name))
         print(path.name)
         print("=" * len(path.name))
-        print(path.read_text())
+        print("DIRECTORY" if path.is_dir() else path.read_text())
         print()
 
 
@@ -178,22 +199,43 @@ def main(args: list[str]) -> None:
         (tmp_path / "WORKSPACE").write_text(generate_workspace(manifest))
         (tmp_path / "BUILD").write_text(generate_build(manifest))
 
-        cat_dir(tmp_path)
+        file_sets: dict[Path, set[str]] = defaultdict(set)
+        cwd = Path.cwd()
+        for group in manifest.groups:
+            files = [
+                group.dependencies,
+                group.filename,
+            ]
 
-        # targets = []
-        # for group in manifest.groups:
-        #     targets.append(f"//:{group.name}")
-        # subprocess.check_call(
-        #     (
-        #         "bazelisk",
-        #         "build",
-        #         *(
-        #             f"//;{group.name}"
-        #             for group in manifest.groups
-        #         ),
-        #     ),
-        #     cwd=tmp_path,
-        # )
+            for filename in files:
+                file_path = tmp_path / filename
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(cwd / filename, file_path)
+                file_sets[file_path.parent].add(file_path.name)
+
+        for path, file_set in file_sets.items():
+            if path == tmp_path:
+                raise NotImplementedError
+            (path / "BUILD").write_text(generate_file_exports(file_set))
+
+        targets = []
+        for group in manifest.groups:
+            targets.append(f"//:{group.name}")
+
+        cat_dir(tmp_path)
+        print(targets)
+
+        subprocess.check_call(
+            (
+                "bazelisk",
+                "build",
+                *(
+                    f"//:{group.name}"
+                    for group in manifest.groups
+                ),
+            ),
+            cwd=tmp_path,
+        )
 
 
 if __name__ == "__main__":
