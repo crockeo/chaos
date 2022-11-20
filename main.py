@@ -80,16 +80,11 @@ def generate_pip_parse(group: Group) -> str:
         # TODO: exception type
         raise Exception("asdfasdfad")
 
-    target = "/"
-    for part in target_parts[:-1]:
-        target = f"{target}/{part}"
-    target = f"{target}:{target_parts[-1]}"
-
     pip_repo_name = f"{group.name}_deps"
     return textwrap.dedent(f"""\
     pip_parse(
         name = "{pip_repo_name}",
-        requirements_lock = "{target}",
+        requirements_lock = "{filename_as_target(group.dependencies)}",
     )
 
     load("@{pip_repo_name}//:requirements.bzl", install_deps_{group.name} = "install_deps")
@@ -176,15 +171,6 @@ def print_usage() -> None:
     print("  python main.py <path to manifest>", file=sys.stderr)
 
 
-def cat_dir(dir: Path) -> None:
-    for path in dir.iterdir():
-        print("=" * len(path.name))
-        print(path.name)
-        print("=" * len(path.name))
-        print("DIRECTORY" if path.is_dir() else path.read_text())
-        print()
-
-
 def main(args: list[str]) -> None:
     manifest_paths = args[1:]
     if not manifest_paths or len(manifest_paths) > 1:
@@ -221,9 +207,6 @@ def main(args: list[str]) -> None:
         targets = []
         for group in manifest.groups:
             targets.append(f"//:{group.name}")
-
-        cat_dir(tmp_path)
-        print(targets)
 
         subprocess.check_call(
             (
