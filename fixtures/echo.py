@@ -4,6 +4,6 @@ from fastapi import APIRouter
 router = APIRouter()
 
 
-@router.get("/{content}")
+@router.get("/echo/{content}")
 async def echo(content: str) -> str:
     return content

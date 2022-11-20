@@ -42,6 +42,12 @@ from manifest import Manifest
 #
 # - This is mostly filling in templates. How about I move it over to jinja2?
 #   Then I can get away from most of this manual text munging.
+#
+# - If multiple groups target the same set of requirements,
+#   don't create multiple venvs for them! Do only 1 `pip_parse`.
+#   Better yet: don't do it on filename quality, do it on equivalence of the sets.
+#   It doesn't matter if multiple places refer
+#   to different files if they want to install the same stuff.
 
 HTTP_ARCHIVE = """\
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -131,7 +137,11 @@ def generate_python_env(group: Group) -> str:
 
 def generate_workspace(manifest: Manifest) -> str:
     return "\n".join(
-        [HTTP_ARCHIVE, RULES_PYTHON, generate_python_env(manifest.groups[0])]
+        [
+            HTTP_ARCHIVE,
+            RULES_PYTHON,
+            *(generate_python_env(group) for group in manifest.groups),
+        ]
     )
 
 
