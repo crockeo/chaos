@@ -14,6 +14,7 @@ import yaml
 
 
 class Language(Enum):
+    PYTHON_3_10 = ("python", (3, 10))
     PYTHON_3_11 = ("python", (3, 11))
 
     def formatted_version(self) -> str:

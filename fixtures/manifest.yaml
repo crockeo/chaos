@@ -1,6 +1,7 @@
 groups:
   - name: echo
-    language: python3.11
+    # NOTE: python3.11 not supported by Bazel yet :(
+    language: python3.10
     filename: echo.py
     endpoints:
       - name: router

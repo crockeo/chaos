@@ -1,5 +1,8 @@
+import subprocess
 import sys
 import textwrap
+import tempfile
+from pathlib import Path
 
 from manifest import Group, Language, Manifest
 
@@ -38,6 +41,11 @@ load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 """
 
 
+PY_LIBRARY = """\
+load("@rules_python//python:defs.bzl", "py_library")
+"""
+
+
 def generate_python_toolchain(language: Language) -> str:
     language_id, _ = language.value
     if language_id != "python":
@@ -70,12 +78,15 @@ def generate_pip_parse(group: Group) -> str:
         target = f"{target}/{part}"
     target = f"{target}:{target_parts[-1]}"
 
+    pip_repo_name = f"{group.name}_deps"
     return textwrap.dedent(f"""\
     pip_parse(
-        name = "{group.name}_deps",
+        name = "{pip_repo_name}",
         requirements_lock = "{target}",
     )
-    """)
+
+    load("@{pip_repo_name}//:requirements.bzl", "install_deps_{group.name}")
+    install_deps_{group.name}()""")
 
 
 def generate_python_env(group: Group) -> str:
@@ -94,20 +105,75 @@ def generate_workspace(manifest: Manifest) -> str:
     ])
 
 
+def load_deps(group: Group) -> str:
+    raise NotImplementedError
+
+
+def generate_group_target(group: Group) -> str:
+    requirement_name = f"requirement_{group.name}"
+    return textwrap.dedent(f"""\
+    load(f"@{group.name}_deps//:requirements.bzl", "{requirement_name}")
+
+    py_library(
+        name = "{group.name}"
+        srcs = ["{group.filename}"],
+        deps = [
+        ],
+    )
+    """)
+
+
+def generate_build(manifest: Manifest) -> str:
+    return "\n".join([
+        PY_LIBRARY,
+        *(generate_group_target(group) for group in manifest.groups),
+    ])
+
+
 def print_usage() -> None:
     print("Correct usage:", file=sys.stderr)
-    print("  python main.py <path to manifest> ...", file=sys.stderr)
+    print("  python main.py <path to manifest>", file=sys.stderr)
+
+
+def cat_dir(dir: Path) -> None:
+    for path in dir.iterdir():
+        print("=" * len(path.name))
+        print(path.name)
+        print("=" * len(path.name))
+        print(path.read_text())
+        print()
 
 
 def main(args: list[str]) -> None:
     manifest_paths = args[1:]
-    if not manifest_paths:
+    if not manifest_paths or len(manifest_paths) > 1:
         print_usage()
         raise SystemExit(1)
 
-    for manifest_path in manifest_paths:
-        manifest = Manifest.load(manifest_path)
-        print(generate_workspace(manifest))
+    manifest_path = manifest_paths[0]
+    manifest = Manifest.load(manifest_path)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        (tmp_path / "WORKSPACE").write_text(generate_workspace(manifest))
+        (tmp_path / "BUILD").write_text(generate_build(manifest))
+
+        cat_dir(tmp_path)
+
+        # targets = []
+        # for group in manifest.groups:
+        #     targets.append(f"//:{group.name}")
+        # subprocess.check_call(
+        #     (
+        #         "bazelisk",
+        #         "build",
+        #         *(
+        #             f"//;{group.name}"
+        #             for group in manifest.groups
+        #         ),
+        #     ),
+        #     cwd=tmp_path,
+        # )
 
 
 if __name__ == "__main__":
