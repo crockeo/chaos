@@ -76,9 +76,20 @@ def generate_workspace(manifest: Manifest) -> str:
     ])
 
 
+def print_usage() -> None:
+    print("Correct usage:", file=sys.stderr)
+    print("  python main.py <path to manifest> ...", file=sys.stderr)
+
+
 def main(args: list[str]) -> None:
-    manifest = Manifest.load(args[1])
-    print(generate_workspace(manifest))
+    manifest_paths = args[1:]
+    if not manifest_paths:
+        print_usage()
+        raise SystemExit(1)
+
+    for manifest_path in manifest_paths:
+        manifest = Manifest.load(manifest_path)
+        print(generate_workspace(manifest))
 
 
 if __name__ == "__main__":
