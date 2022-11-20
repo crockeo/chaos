@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 import yaml
@@ -77,10 +77,7 @@ class Manifest:
     @staticmethod
     def from_dict(raw_manifest: dict[str, Any]) -> Manifest:
         return Manifest(
-            groups=[
-                Group.from_dict(raw_group)
-                for raw_group in raw_manifest["groups"]
-            ],
+            groups=[Group.from_dict(raw_group) for raw_group in raw_manifest["groups"]],
         )
 
     @staticmethod

@@ -1,16 +1,17 @@
-from collections import defaultdict
-from functools import partial
 import shutil
 import subprocess
 import sys
-import textwrap
 import tempfile
+import textwrap
+from collections import defaultdict
 from pathlib import Path
-from packaging.requirements import InvalidRequirement
-from packaging.requirements import Requirement
-from debug import cat_dir
 
-from manifest import Group, Language, Manifest
+from packaging.requirements import Requirement
+
+from debug import cat_dir
+from manifest import Group
+from manifest import Language
+from manifest import Manifest
 
 
 # TODO
@@ -70,9 +71,12 @@ def generate_python_toolchain(language: Language) -> str:
     language_id, _ = language.value
     if language_id != "python":
         # TODO: better exception type
-        raise ValueError(f"Cannot generate Python toolchain for non-Python language: {language_id}")
+        raise ValueError(
+            f"Cannot generate Python toolchain for non-Python language: {language_id}"
+        )
 
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
     python_register_toolchains(
         name = "{language.toolchain_name()}",
         python_version = "{language.formatted_version()}",
@@ -86,7 +90,8 @@ def generate_python_toolchain(language: Language) -> str:
         requirements_lock = "//:requirements.txt",
         python_interpreter_target = interpreter,
     )
-    """)
+    """
+    )
 
 
 def generate_pip_parse(group: Group) -> str:
@@ -96,7 +101,8 @@ def generate_pip_parse(group: Group) -> str:
         raise Exception("asdfasdfad")
 
     pip_repo_name = f"{group.name}_deps"
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
     pip_parse(
         name = "{pip_repo_name}",
         requirements_lock = "{filename_as_target(group.dependencies)}",
@@ -104,7 +110,8 @@ def generate_pip_parse(group: Group) -> str:
     )
 
     load("@{pip_repo_name}//:requirements.bzl", install_deps_{group.name} = "install_deps")
-    install_deps_{group.name}()""")
+    install_deps_{group.name}()"""
+    )
 
 
 def generate_python_env(group: Group) -> str:
@@ -116,11 +123,9 @@ def generate_python_env(group: Group) -> str:
 
 
 def generate_workspace(manifest: Manifest) -> str:
-    return "\n".join([
-        HTTP_ARCHIVE,
-        RULES_PYTHON,
-        generate_python_env(manifest.groups[0])
-    ])
+    return "\n".join(
+        [HTTP_ARCHIVE, RULES_PYTHON, generate_python_env(manifest.groups[0])]
+    )
 
 
 def load_requirements_deps(requirement_name: str, dependencies: str) -> str:
@@ -135,15 +140,10 @@ def load_requirements_deps(requirement_name: str, dependencies: str) -> str:
         # NOTE: This requires that requirement files
         # have no other text except for comments and requirements.
         req = Requirement(line)
-        deps.append(
-            f"{requirement_name}(\"{req.name}\")"
-        )
+        deps.append(f'{requirement_name}("{req.name}")')
 
     # TODO: this is disgusting little codegen and i hate it
-    deps = [
-        f"            {dep},"
-        for dep in deps
-    ]
+    deps = [f"            {dep}," for dep in deps]
     rendered_deps = "\n".join(deps)
     return f"\n{rendered_deps}\n        "
 
@@ -152,7 +152,8 @@ def generate_group_target(group: Group) -> str:
     requirement_name = f"requirement_{group.name}"
 
     rendered_deps = load_requirements_deps(requirement_name, group.dependencies)
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
     load("@{group.name}_deps//:requirements.bzl", {requirement_name} = "requirement")
 
     py_library(
@@ -160,7 +161,8 @@ def generate_group_target(group: Group) -> str:
         srcs = ["{filename_as_target(group.filename)}"],
         deps = [{rendered_deps}],
     )
-    """)
+    """
+    )
 
 
 def generate_group_import(group: Group):
@@ -174,30 +176,29 @@ def generate_group_import(group: Group):
     filename, _, _ = filename.partition(".")
     fully_qualified_name = f"{underscore_directory}_{filename}"
 
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
     from {dot_directory} import {filename} as {fully_qualified_name}
     app.include_router({fully_qualified_name}.router)
-    """)
+    """
+    )
 
 
 def generate_server_py(manifest: Manifest) -> str:
     server = (Path.cwd() / "server.py").read_text()
     rendered_group_imports = "\n\n".join(
-        generate_group_import(group)
-        for group in manifest.groups
+        generate_group_import(group) for group in manifest.groups
     )
 
     return server.replace("# {{REPLACE_ME}}\n", rendered_group_imports)
 
 
 def generate_server_target(manifest: Manifest) -> str:
-    group_deps = ",".join(
-        f"\":{group.name}\""
-        for group in manifest.groups
-    )
+    group_deps = ",".join(f'":{group.name}"' for group in manifest.groups)
     requirements_deps = load_requirements_deps("requirement_server", "requirements.txt")
 
-    return textwrap.dedent(f"""
+    return textwrap.dedent(
+        f"""
     load("@server_deps//:requirements.bzl", requirement_server = "requirement")
 
     py_binary(
@@ -205,26 +206,28 @@ def generate_server_target(manifest: Manifest) -> str:
         srcs = [":server.py"],
         deps = [{group_deps},{requirements_deps}],
     )
-    """)
+    """
+    )
 
 
 def generate_build(manifest: Manifest) -> str:
-    return "\n".join([
-        PY_RULES,
-        *(generate_group_target(group) for group in manifest.groups),
-        generate_server_target(manifest),
-    ])
+    return "\n".join(
+        [
+            PY_RULES,
+            *(generate_group_target(group) for group in manifest.groups),
+            generate_server_target(manifest),
+        ]
+    )
 
 
 def generate_file_exports(file_set: set[str]) -> str:
-    exports = [
-        f"\"{filename}\""
-        for filename in sorted(file_set)
-    ]
+    exports = [f'"{filename}"' for filename in sorted(file_set)]
     exports = ",".join(exports)
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
     exports_files([{exports}])
-    """)
+    """
+    )
 
 
 def print_usage() -> None:
