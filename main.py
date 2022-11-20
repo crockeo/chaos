@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from packaging.requirements import InvalidRequirement
 from packaging.requirements import Requirement
+from debug import cat_dir
 
 from manifest import Group, Language, Manifest
 
@@ -79,6 +80,12 @@ def generate_python_toolchain(language: Language) -> str:
 
     load("@{language.toolchain_name()}//:defs.bzl", "interpreter")
     load("@rules_python//python:pip.bzl", "pip_parse")
+
+    pip_parse(
+        name = "server_deps",
+        requirements_lock = "//:requirements.txt",
+        python_interpreter_target = interpreter,
+    )
     """)
 
 
@@ -93,6 +100,7 @@ def generate_pip_parse(group: Group) -> str:
     pip_parse(
         name = "{pip_repo_name}",
         requirements_lock = "{filename_as_target(group.dependencies)}",
+        python_interpreter_target = interpreter,
     )
 
     load("@{pip_repo_name}//:requirements.bzl", install_deps_{group.name} = "install_deps")
@@ -115,8 +123,8 @@ def generate_workspace(manifest: Manifest) -> str:
     ])
 
 
-def load_deps(requirement_name: str, group: Group) -> list[str]:
-    deps_path = Path.cwd() / group.dependencies
+def load_requirements_deps(requirement_name: str, dependencies: str) -> str:
+    deps_path = Path.cwd() / dependencies
 
     deps = []
     for line in deps_path.read_text().splitlines():
@@ -130,21 +138,20 @@ def load_deps(requirement_name: str, group: Group) -> list[str]:
         deps.append(
             f"{requirement_name}(\"{req.name}\")"
         )
-    return deps
-
-
-def generate_group_target(group: Group) -> str:
-    requirement_name = f"requirement_{group.name}"
 
     # TODO: this is disgusting little codegen and i hate it
-    deps = load_deps(requirement_name, group)
     deps = [
         f"            {dep},"
         for dep in deps
     ]
     rendered_deps = "\n".join(deps)
-    rendered_deps = f"\n{rendered_deps}\n        "
+    return f"\n{rendered_deps}\n        "
 
+
+def generate_group_target(group: Group) -> str:
+    requirement_name = f"requirement_{group.name}"
+
+    rendered_deps = load_requirements_deps(requirement_name, group.dependencies)
     return textwrap.dedent(f"""\
     load("@{group.name}_deps//:requirements.bzl", {requirement_name} = "requirement")
 
@@ -184,15 +191,19 @@ def generate_server_py(manifest: Manifest) -> str:
 
 
 def generate_server_target(manifest: Manifest) -> str:
-    rendered_deps = ",".join(
-        f"\"{group.name}\""
+    group_deps = ",".join(
+        f"\":{group.name}\""
         for group in manifest.groups
     )
+    requirements_deps = load_requirements_deps("requirement_server", "requirements.txt")
+
     return textwrap.dedent(f"""
+    load("@server_deps//:requirements.bzl", requirement_server = "requirement")
+
     py_binary(
         name = "server",
         srcs = [":server.py"],
-        deps = [{rendered_deps}],
+        deps = [{group_deps},{requirements_deps}],
     )
     """)
 
@@ -232,12 +243,13 @@ def main(args: list[str]) -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
 
+        cwd = Path.cwd()
         (tmp_path / "BUILD").write_text(generate_build(manifest))
         (tmp_path / "WORKSPACE").write_text(generate_workspace(manifest))
         (tmp_path / "server.py").write_text(generate_server_py(manifest))
+        shutil.copy(cwd / "requirements.txt", tmp_path / "requirements.txt")
 
         file_sets: dict[Path, set[str]] = defaultdict(set)
-        cwd = Path.cwd()
         for group in manifest.groups:
             files = [
                 group.dependencies,
@@ -260,6 +272,10 @@ def main(args: list[str]) -> None:
         for group in manifest.groups:
             targets.append(f"//:{group.name}")
 
+        cat_dir(tmp_path)
+
+        print(tmp_path)
+        input()
         subprocess.check_call(
             (
                 "bazelisk",
