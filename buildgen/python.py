@@ -13,6 +13,34 @@ from manifest import Language
 from manifest import Manifest
 
 
+# TODO: thing about and articulate:
+#
+# - enumerate step for how to get a runnable target for python, like:
+#   - always:
+#     - loading http_archive
+#   - if there is at least 1 python dependency:
+#     - cloning rules_python, loading pip_parse and python_register_toolchain
+#     - import py_library
+#     - TODO: py_binary and server?
+#   - for each python version:
+#     - define a toolchain
+#     - load a python interpreter
+#     - TODO: what's good with the server executable?
+#   - for each target:
+#     - repo rules:
+#       - make a pip_parse target for the target's dependencies
+#       - load an `install_deps` from that pip_parse
+#       - load those deps!
+#     - build rules!
+#       - load the `requirement` function for each target
+#       - making a py_library for each target
+#   - for each file: if it's not in the root dir then
+#     `export_files` for each file
+# - moving over to jinja for my templating instead of raw text munging
+# - doing more validation (like w/ marshmallow?) when loading
+#   to provide more invariants?
+
+
 RULES_PYTHON = """\
 http_archive(
     name = "rules_python",
