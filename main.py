@@ -9,9 +9,13 @@ from pathlib import Path
 
 from packaging.requirements import Requirement
 
+from buildgen.common import filename_as_target
+from buildgen.common import HTTP_ARCHIVE
+from buildgen.python import generate_python_env
+from buildgen.python import LOAD_PY_TARGETS
+from buildgen.python import RULES_PYTHON
 from debug import cat_dir
 from manifest import Group
-from manifest import Language
 from manifest import Manifest
 
 
@@ -48,91 +52,6 @@ from manifest import Manifest
 #   Better yet: don't do it on filename quality, do it on equivalence of the sets.
 #   It doesn't matter if multiple places refer
 #   to different files if they want to install the same stuff.
-
-HTTP_ARCHIVE = """\
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-"""
-
-
-RULES_PYTHON = """\
-http_archive(
-    name = "rules_python",
-    sha256 = "8c8fe44ef0a9afc256d1e75ad5f448bb59b81aba149b8958f02f7b3a98f5d9b4",
-    strip_prefix = "rules_python-0.13.0",
-    url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.13.0.tar.gz",
-)
-load("@rules_python//python:repositories.bzl", "python_register_toolchains")
-"""
-
-
-PY_RULES = """\
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
-"""
-
-
-def filename_as_target(filename: str) -> str:
-    directory, _, filename = filename.rpartition("/")
-    if not filename:
-        return f"//:{directory}"
-    return f"//{directory}:{filename}"
-
-
-def generate_python_toolchain(language: Language) -> str:
-    language_id, _ = language.value
-    if language_id != "python":
-        # TODO: better exception type
-        raise ValueError(
-            f"Cannot generate Python toolchain for non-Python language: {language_id}"
-        )
-
-    return textwrap.dedent(
-        f"""\
-    python_register_toolchains(
-        name = "{language.toolchain_name()}",
-        python_version = "{language.formatted_version()}",
-    )
-
-    load("@{language.toolchain_name()}//:defs.bzl", "interpreter")
-    load("@rules_python//python:pip.bzl", "pip_parse")
-
-    pip_parse(
-        name = "server_deps",
-        requirements_lock = "//:requirements.txt",
-        python_interpreter_target = interpreter,
-    )
-
-    load("@server_deps//:requirements.bzl", install_deps_server = "install_deps")
-    install_deps_server()
-    """
-    )
-
-
-def generate_pip_parse(group: Group) -> str:
-    target_parts = group.dependencies.split("/")
-    if not target_parts:
-        # TODO: exception type
-        raise Exception("asdfasdfad")
-
-    pip_repo_name = f"{group.name}_deps"
-    return textwrap.dedent(
-        f"""\
-    pip_parse(
-        name = "{pip_repo_name}",
-        requirements_lock = "{filename_as_target(group.dependencies)}",
-        python_interpreter_target = interpreter,
-    )
-
-    load("@{pip_repo_name}//:requirements.bzl", install_deps_{group.name} = "install_deps")
-    install_deps_{group.name}()"""
-    )
-
-
-def generate_python_env(group: Group) -> str:
-    parts = [
-        generate_python_toolchain(group.language),
-        generate_pip_parse(group),
-    ]
-    return "\n".join(parts)
 
 
 def generate_workspace(manifest: Manifest) -> str:
@@ -230,7 +149,7 @@ def generate_server_target(manifest: Manifest) -> str:
 def generate_build(manifest: Manifest) -> str:
     return "\n".join(
         [
-            PY_RULES,
+            LOAD_PY_TARGETS,
             *(generate_group_target(group) for group in manifest.groups),
             generate_server_target(manifest),
         ]

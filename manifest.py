@@ -17,6 +17,14 @@ class Language(Enum):
     PYTHON_3_10 = ("python", (3, 10))
     PYTHON_3_11 = ("python", (3, 11))
 
+    @property
+    def name(self) -> str:
+        return self.value[0]
+
+    @property
+    def version(self) -> tuple[int, ...]:
+        return self.value[1]
+
     def formatted_version(self) -> str:
         _, version = self.value
         return ".".join(str(part) for part in version)
