@@ -14,11 +14,12 @@ import yaml
 
 
 class Language(Enum):
+    PYTHON_3_9 = ("python", (3, 9))
     PYTHON_3_10 = ("python", (3, 10))
     PYTHON_3_11 = ("python", (3, 11))
 
     @property
-    def name(self) -> str:
+    def id(self) -> str:
         return self.value[0]
 
     @property

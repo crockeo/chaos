@@ -14,6 +14,7 @@ http_archive(
     strip_prefix = "rules_python-0.13.0",
     url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.13.0.tar.gz",
 )
+load("@rules_python//python:pip.bzl", "pip_parse")
 load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 """
 
@@ -39,7 +40,6 @@ def generate_python_toolchain(language: Language) -> str:
     )
 
     load("@{language.toolchain_name()}//:defs.bzl", "interpreter")
-    load("@rules_python//python:pip.bzl", "pip_parse")
 
     pip_parse(
         name = "server_deps",

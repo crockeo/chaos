@@ -7,7 +7,7 @@ groups:
       - name: router
     dependencies: fixtures/echo_requirements.txt
   - name: hello_world  # TODO: make this support spaces?
-    language: python3.10
+    language: python3.9
     filename: fixtures/hello_world.py
     endpoints:
       - name: router

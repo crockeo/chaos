@@ -4,7 +4,7 @@ from manifest import Manifest
 
 
 def generate_toolchain(language: Language) -> str:
-    if language.name == "python":
+    if language.id == "python":
         return generate_python_toolchain(language)
     else:
         # TODO: exception type
@@ -13,4 +13,4 @@ def generate_toolchain(language: Language) -> str:
 
 def generate_toolchains(manifest: Manifest) -> str:
     languages = {group.language for group in manifest.groups}
-    return "\n".join(generate_toolchain(language) for language in sorted(languages))
+    return "\n".join(generate_toolchain(language) for language in languages)

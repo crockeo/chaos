@@ -9,6 +9,7 @@ from pathlib import Path
 
 from packaging.requirements import Requirement
 
+from buildgen import generate_toolchains
 from buildgen.common import filename_as_target
 from buildgen.common import HTTP_ARCHIVE
 from buildgen.python import generate_python_env
@@ -158,10 +159,10 @@ def generate_build(manifest: Manifest) -> str:
 
 def generate_file_exports(file_set: set[str]) -> str:
     exports = [f'"{filename}"' for filename in sorted(file_set)]
-    exports = ",".join(exports)
+    rendered_exports = ",".join(exports)
     return textwrap.dedent(
         f"""\
-    exports_files([{exports}])
+    exports_files([{rendered_exports}])
     """
     )
 
@@ -179,6 +180,10 @@ def main(args: list[str]) -> None:
 
     manifest_path = manifest_paths[0]
     manifest = Manifest.load(manifest_path)
+
+    print(generate_toolchains(manifest))
+    return
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
 
