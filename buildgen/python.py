@@ -7,6 +7,7 @@ from pathlib import Path
 from packaging.requirements import Requirement
 
 from buildgen.common import filename_as_target
+from buildgen.common import get_toolchain_name
 from manifest import Group
 from manifest import Language
 from manifest import Manifest
@@ -27,12 +28,6 @@ load("@rules_python//python:repositories.bzl", "python_register_toolchains")
 LOAD_PY_TARGETS = """\
 load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 """
-
-
-def get_toolchain_name(language: Language) -> str:
-    formatted_version = language.formatted_version()
-    formatted_version = formatted_version.replace(".", "_")
-    return f"{language.id}{formatted_version}"
 
 
 def get_interpreter_name(language: Language) -> str:

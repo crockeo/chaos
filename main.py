@@ -7,11 +7,11 @@ import textwrap
 from collections import defaultdict
 from pathlib import Path
 
+from buildgen.common import get_toolchain_name
 from buildgen.common import HTTP_ARCHIVE
 from buildgen.python import generate_python_env
 from buildgen.python import generate_python_group_target
 from buildgen.python import generate_python_server_targets
-from buildgen.python import get_toolchain_name
 from buildgen.python import LOAD_PY_TARGETS
 from buildgen.python import RULES_PYTHON
 from debug import cat_dir
