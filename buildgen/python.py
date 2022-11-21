@@ -169,7 +169,7 @@ def generate_python_server_targets(manifest: Manifest) -> str:
 
             py_binary(
                 name = "{toolchain_name}_server",
-                srcs = [":server.py"],
+                srcs = [":{toolchain_name}_server.py"],
                 deps = [{group_deps},{requirements_deps}],
             )
             """

@@ -11,10 +11,12 @@ from buildgen.common import HTTP_ARCHIVE
 from buildgen.python import generate_python_env
 from buildgen.python import generate_python_group_target
 from buildgen.python import generate_python_server_targets
+from buildgen.python import get_toolchain_name
 from buildgen.python import LOAD_PY_TARGETS
 from buildgen.python import RULES_PYTHON
 from debug import cat_dir
 from manifest import Group
+from manifest import Language
 from manifest import Manifest
 
 
@@ -82,10 +84,12 @@ def generate_group_import(group: Group):
     )
 
 
-def generate_server_py(manifest: Manifest) -> str:
+def generate_server_py(manifest: Manifest, for_language: Language) -> str:
     server = (Path.cwd() / "server.py").read_text()
     rendered_group_imports = "\n\n".join(
-        generate_group_import(group) for group in manifest.groups
+        generate_group_import(group)
+        for group in manifest.groups
+        if group.language == for_language
     )
 
     return server.replace("# {{REPLACE_ME}}\n", rendered_group_imports)
@@ -131,8 +135,14 @@ def main(args: list[str]) -> None:
         cwd = Path.cwd()
         (tmp_path / "BUILD").write_text(generate_build(manifest))
         (tmp_path / "WORKSPACE").write_text(generate_workspace(manifest))
-        (tmp_path / "server.py").write_text(generate_server_py(manifest))
         shutil.copy(cwd / "requirements.txt", tmp_path / "requirements.txt")
+
+        languages = {group.language for group in manifest.groups}
+        for language in languages:
+            toolchain_name = get_toolchain_name(language)
+            (tmp_path / f"{toolchain_name}_server.py").write_text(
+                generate_server_py(manifest, language)
+            )
 
         file_sets: dict[Path, set[str]] = defaultdict(set)
         for group in manifest.groups:
