@@ -2,32 +2,39 @@ import textwrap
 from collections import defaultdict
 from pathlib import Path
 
-from buildgen.python import generate_python_toolchain
 from buildgen.python import PythonBuildGenerator
-from manifest import Language
 from manifest import Manifest
 
 
-def generate_toolchain(language: Language) -> str:
-    if language.id == "python":
-        return generate_python_toolchain(language)
-    else:
-        # TODO: exception type
-        raise Exception(f"Cannot generate toolchain for language `{language.name}`")
-
-
-def generate_toolchains(manifest: Manifest) -> str:
-    languages = {group.language for group in manifest.groups}
-    return "\n".join(generate_toolchain(language) for language in languages)
-
+HTTP_ARCHIVE = """\
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+"""
 
 LANGUAGE_TO_GENERATOR = {
-    "python": PythonBuildGenerator,
+    "python": PythonBuildGenerator(),
 }
 
 
 def generate_workspace(manifest: Manifest) -> str:
-    raise NotImplementedError
+    language_ids = set()
+    languages = set()
+    for group in manifest.groups:
+        language_ids.add(group.language.id)
+        languages.add(group.language)
+
+    sections = []
+    if languages:
+        sections.append(HTTP_ARCHIVE)
+
+    for language_id in language_ids:
+        generator = LANGUAGE_TO_GENERATOR[language_id]
+        sections.append(generator.generate_repository_rules())
+
+    for language in sorted(languages, key=lambda language: language.value):
+        generator = LANGUAGE_TO_GENERATOR[language.id]
+        sections.append(generator.generate_toolchain(language))
+
+    return "\n".join(sections)
 
 
 def generate_root_build(manifest: Manifest) -> str:

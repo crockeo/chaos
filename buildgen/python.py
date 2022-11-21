@@ -14,10 +14,6 @@ from manifest import Language
 from manifest import Manifest
 
 
-class PythonBuildGenerator(BuildGenerator):
-    pass
-
-
 # TODO: thing about and articulate:
 #
 # - enumerate step for how to get a runnable target for python, like:
@@ -78,38 +74,50 @@ def get_install_deps_name(language: Language) -> str:
     return f"{toolchain_name}_install_deps_server"
 
 
-def generate_python_toolchain(language: Language) -> str:
-    language_id, _ = language.value
-    if language_id != "python":
-        # TODO: better exception type
-        raise ValueError(
-            f"Cannot generate Python toolchain for non-Python language: {language_id}"
+class PythonBuildGenerator(BuildGenerator):
+    def generate_repository_rules(self) -> str:
+        repository_rules = """\
+        http_archive(
+            name = "rules_python",
+            sha256 = "8c8fe44ef0a9afc256d1e75ad5f448bb59b81aba149b8958f02f7b3a98f5d9b4",
+            strip_prefix = "rules_python-0.13.0",
+            url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.13.0.tar.gz",
+        )
+        load("@rules_python//python:pip.bzl", "pip_parse")
+        load("@rules_python//python:repositories.bzl", "python_register_toolchains")
+        """
+        return textwrap.dedent(repository_rules)
+
+    def generate_toolchain(self, language: Language) -> str:
+        toolchain_name = get_toolchain_name(language)
+        interpreter_name = get_interpreter_name(language)
+        server_deps_name = get_server_deps_name(language)
+        install_deps_name = get_install_deps_name(language)
+        toolchain = f"""\
+        python_register_toolchains(
+            name = "{toolchain_name}",
+            python_version = "{language.formatted_version()}",
         )
 
-    toolchain_name = get_toolchain_name(language)
-    interpreter_name = get_interpreter_name(language)
-    server_deps_name = get_server_deps_name(language)
-    install_deps_name = get_install_deps_name(language)
-    return textwrap.dedent(
-        f"""\
-    python_register_toolchains(
-        name = "{toolchain_name}",
-        python_version = "{language.formatted_version()}",
-    )
+        load("@{toolchain_name}//:defs.bzl", {interpreter_name} = "interpreter")
 
-    load("@{toolchain_name}//:defs.bzl", {interpreter_name} = "interpreter")
+        pip_parse(
+            name = "{server_deps_name}",
+            requirements_lock = "//:requirements.txt",
+            python_interpreter_target = {interpreter_name},
+        )
 
-    pip_parse(
-        name = "{server_deps_name}",
-        requirements_lock = "//:requirements.txt",
-        python_interpreter_target = {interpreter_name},
-    )
+        load("@{server_deps_name}//:requirements.bzl", {install_deps_name} = "install_deps")
 
-    load("@{server_deps_name}//:requirements.bzl", {install_deps_name} = "install_deps")
+        {install_deps_name}()
+        """
+        return textwrap.dedent(toolchain)
 
-    {install_deps_name}()
-    """
-    )
+    def generate_build_rules(self) -> str:
+        raise NotImplementedError
+
+    def generate_target(self, group: Group) -> str:
+        raise NotImplementedError
 
 
 def generate_pip_parse(group: Group) -> str:
@@ -133,8 +141,9 @@ def generate_pip_parse(group: Group) -> str:
 
 
 def generate_python_env(group: Group) -> str:
+    generator = PythonBuildGenerator()
     parts = [
-        generate_python_toolchain(group.language),
+        generator.generate_toolchain(group.language),
         generate_pip_parse(group),
     ]
     return "\n".join(parts)
