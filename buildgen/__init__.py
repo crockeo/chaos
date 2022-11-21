@@ -48,7 +48,12 @@ def generate_export_builds(manifest: Manifest) -> dict[Path, str]:
 
     build_files: dict[Path, str] = {}
     for path, filenames in filename_groups.items():
-        rendered_exports = ",".join(f'"{filename}"' for filename in filenames)
+        if path == Path("."):
+            # Files are automatically exported to BUILD files in the same directory.
+            # So file do not need to be exported from the root directory.
+            continue
+
+        rendered_exports = ",".join(f'"{filename}"' for filename in sorted(filenames))
         build_file = f"""\
         exports_files([{rendered_exports}])
         """
