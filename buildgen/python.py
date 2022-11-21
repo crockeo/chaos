@@ -6,11 +6,16 @@ from pathlib import Path
 
 from packaging.requirements import Requirement
 
+from buildgen.common import BuildGenerator
 from buildgen.common import filename_as_target
 from buildgen.common import get_toolchain_name
 from manifest import Group
 from manifest import Language
 from manifest import Manifest
+
+
+class PythonBuildGenerator(BuildGenerator):
+    pass
 
 
 # TODO: thing about and articulate:
