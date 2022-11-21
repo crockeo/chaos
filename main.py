@@ -7,12 +7,10 @@ import textwrap
 from collections import defaultdict
 from pathlib import Path
 
-from packaging.requirements import Requirement
-
-from buildgen import generate_toolchains
-from buildgen.common import filename_as_target
 from buildgen.common import HTTP_ARCHIVE
 from buildgen.python import generate_python_env
+from buildgen.python import generate_python_group_target
+from buildgen.python import generate_python_server_targets
 from buildgen.python import LOAD_PY_TARGETS
 from buildgen.python import RULES_PYTHON
 from debug import cat_dir
@@ -65,43 +63,6 @@ def generate_workspace(manifest: Manifest) -> str:
     )
 
 
-def load_requirements_deps(requirement_name: str, dependencies: str) -> str:
-    deps_path = Path.cwd() / dependencies
-
-    deps = []
-    for line in deps_path.read_text().splitlines():
-        line = line.strip()
-        if line.startswith("#"):
-            continue
-
-        # NOTE: This requires that requirement files
-        # have no other text except for comments and requirements.
-        req = Requirement(line)
-        deps.append(f'{requirement_name}("{req.name}")')
-
-    # TODO: this is disgusting little codegen and i hate it
-    deps = [f"            {dep}," for dep in deps]
-    rendered_deps = "\n".join(deps)
-    return f"\n{rendered_deps}\n        "
-
-
-def generate_group_target(group: Group) -> str:
-    requirement_name = f"requirement_{group.name}"
-
-    rendered_deps = load_requirements_deps(requirement_name, group.dependencies)
-    return textwrap.dedent(
-        f"""\
-    load("@{group.name}_deps//:requirements.bzl", {requirement_name} = "requirement")
-
-    py_library(
-        name = "{group.name}",
-        srcs = ["{filename_as_target(group.filename)}"],
-        deps = [{rendered_deps}],
-    )
-    """
-    )
-
-
 def generate_group_import(group: Group):
     directory, _, filename = group.filename.rpartition("/")
     if not filename:
@@ -130,29 +91,12 @@ def generate_server_py(manifest: Manifest) -> str:
     return server.replace("# {{REPLACE_ME}}\n", rendered_group_imports)
 
 
-def generate_server_target(manifest: Manifest) -> str:
-    group_deps = ",".join(f'":{group.name}"' for group in manifest.groups)
-    requirements_deps = load_requirements_deps("requirement_server", "requirements.txt")
-
-    return textwrap.dedent(
-        f"""
-    load("@server_deps//:requirements.bzl", requirement_server = "requirement")
-
-    py_binary(
-        name = "server",
-        srcs = [":server.py"],
-        deps = [{group_deps},{requirements_deps}],
-    )
-    """
-    )
-
-
 def generate_build(manifest: Manifest) -> str:
     return "\n".join(
         [
             LOAD_PY_TARGETS,
-            *(generate_group_target(group) for group in manifest.groups),
-            generate_server_target(manifest),
+            *(generate_python_group_target(group) for group in manifest.groups),
+            generate_python_server_targets(manifest),
         ]
     )
 
@@ -180,9 +124,6 @@ def main(args: list[str]) -> None:
 
     manifest_path = manifest_paths[0]
     manifest = Manifest.load(manifest_path)
-
-    print(generate_toolchains(manifest))
-    return
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
@@ -222,11 +163,12 @@ def main(args: list[str]) -> None:
             print(tmp_path)
             input()
 
+        # TODO: make this run other servers instead of hard-coded toolchain versions...
         subprocess.check_call(
             (
                 "bazelisk",
                 "run",
-                "//:server",
+                "//:python3_9_server",
             ),
             cwd=tmp_path,
         )
