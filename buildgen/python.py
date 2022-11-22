@@ -82,6 +82,9 @@ class PythonBuildGenerator(BuildGenerator):
         """
         return textwrap.dedent(toolchain)
 
+    def generate_target_deps(self, group: Group) -> str:
+        raise NotImplementedError
+
     def generate_build_rules(self) -> str:
         build_rules = """\
         load("@rules_python//python:defs.bzl", "py_binary", "py_library")
