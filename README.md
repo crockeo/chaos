@@ -32,6 +32,20 @@ python main.py run --manifest fixtures/manifest.yaml --target //:python3_9_serve
 python main.py run --manifest fixtures/manifest.yaml --target //:python3_10_server
 ```
 
+## Roadmap
+
+- [x] Proof-of-concept that lets you assemble a server of out many small endpoints.
+      Scoped to:
+      - Python.
+      - A single ASGI server + framework (uvicorn & fastAPI).
+- [x] Groundwork to make it scalable across multiple ecosystems.
+      Separate codegen into classes which are specialized per-ecosystem.
+- [ ] Move over to a more scalable templating system (e.g. `jinja2`).
+- [ ] Let people plug + play with their ASGI server + framework.
+- [ ] Support other languages:
+  - [ ] Go
+  - [ ] TODO: decide more
+
 ## License
 
 MIT License. See: [LICENSE](/LICENSE).
