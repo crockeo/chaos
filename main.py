@@ -3,10 +3,14 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 from pathlib import Path
 
 import buildgen
+from buildgen.common import get_toolchain_name
 from debug import cat_dir
+from manifest import Group
+from manifest import Language
 from manifest import Manifest
 
 
@@ -45,6 +49,35 @@ from manifest import Manifest
 #   to different files if they want to install the same stuff.
 
 
+def generate_group_import(group: Group):
+    directory, _, filename = group.filename.rpartition("/")
+    if not filename:
+        filename = directory
+        directory = ""
+
+    dot_directory = directory.replace("/", ".")
+    underscore_directory = directory.replace("/", "_")
+    filename, _, _ = filename.partition(".")
+    fully_qualified_name = f"{underscore_directory}_{filename}"
+
+    group_import = f"""\
+    from {dot_directory} import {filename} as {fully_qualified_name}
+    app.include_router({fully_qualified_name}.router)
+    """
+    return textwrap.dedent(group_import)
+
+
+def generate_server_py(manifest: Manifest, for_language: Language) -> str:
+    server = (Path.cwd() / "server.py").read_text()
+    rendered_group_imports = "\n\n".join(
+        generate_group_import(group)
+        for group in manifest.groups
+        if group.language == for_language
+    )
+
+    return server.replace("# {{REPLACE_ME}}\n", rendered_group_imports)
+
+
 def print_usage() -> None:
     print("Correct usage:", file=sys.stderr)
     print("  python main.py <path to manifest>", file=sys.stderr)
@@ -63,6 +96,15 @@ def main(args: list[str]) -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         buildgen.generate_build(tmp_path, manifest)
+
+        # TODO: do server generation in the builder...
+        languages = set()
+        for group in manifest.groups:
+            languages.add(group.language)
+        for language in languages:
+            server_contents = generate_server_py(manifest, language)
+            filename = f"{get_toolchain_name(language)}_server.py"
+            (tmp_path / filename).write_text(server_contents)
 
         # TODO: express this in the manifest somehow...
         shutil.copy(cwd / "requirements.txt", tmp_path / "requirements.txt")
