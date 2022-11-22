@@ -97,7 +97,7 @@ class Manifest:
         )
 
     @staticmethod
-    def load(path: str) -> Manifest:
-        with open(path) as f:
+    def load(path: Path) -> Manifest:
+        with path.open() as f:
             raw_manifest = yaml.full_load(f.read())
         return Manifest.from_dict(raw_manifest)

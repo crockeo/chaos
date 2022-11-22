@@ -1,14 +1,17 @@
-import os
+import functools
 import shutil
 import subprocess
 import sys
 import tempfile
 import textwrap
 from pathlib import Path
+from typing import Any
+from typing import Callable
+
+import click
 
 import buildgen
 from buildgen.common import get_toolchain_name
-from debug import cat_dir
 from manifest import Group
 from manifest import Language
 from manifest import Manifest
@@ -83,50 +86,80 @@ def print_usage() -> None:
     print("  python main.py <path to manifest>", file=sys.stderr)
 
 
-def main(args: list[str]) -> None:
-    manifest_paths = args[1:]
-    if not manifest_paths or len(manifest_paths) > 1:
-        print_usage()
-        raise SystemExit(1)
-
-    manifest_path = manifest_paths[0]
-    manifest = Manifest.load(manifest_path)
-
+def load_manifest(manifest: str) -> Manifest:
     cwd = Path.cwd()
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_path = Path(tmp_dir)
-        buildgen.generate_build(tmp_path, manifest)
+    return Manifest.load(cwd / manifest)
 
-        # TODO: do server generation in the builder...
-        languages = set()
-        for group in manifest.groups:
-            languages.add(group.language)
-        for language in languages:
-            server_contents = generate_server_py(manifest, language)
-            filename = f"{get_toolchain_name(language)}_server.py"
-            (tmp_path / filename).write_text(server_contents)
 
-        # TODO: express this in the manifest somehow...
-        shutil.copy(cwd / "requirements.txt", tmp_path / "requirements.txt")
-        for path in manifest.iter_files():
-            shutil.copy(cwd / path, tmp_dir / path)
+def do_buildgen(manifest: Manifest, target_path: Path) -> None:
+    cwd = Path.cwd()
+    buildgen.generate_build(target_path, manifest)
 
-        # TODO: remove this later...
-        if "DEBUG" in os.environ:
-            cat_dir(tmp_path)
-            print(tmp_path)
-            input()
+    # TODO: do server generation in the builder...
+    languages = set()
+    for group in manifest.groups:
+        languages.add(group.language)
+    for language in languages:
+        server_contents = generate_server_py(manifest, language)
+        filename = f"{get_toolchain_name(language)}_server.py"
+        (target_path / filename).write_text(server_contents)
 
-        # TODO: make this run other servers instead of hard-coded toolchain versions...
+    # TODO: express this in the manifest somehow...
+    shutil.copy(cwd / "requirements.txt", target_path / "requirements.txt")
+    for path in manifest.iter_files():
+        shutil.copy(cwd / path, target_path / path)
+
+
+# NOTE: we don't really care about type erasure here,
+# because these are only going to be called from
+# click's magic internal interface.
+def arguments(fn: Callable[..., Any]) -> Callable[..., Any]:
+    @click.option(
+        "--manifest",
+        required=True,
+        type=click.Path(exists=True, dir_okay=False, readable=True),
+    )
+    @functools.wraps(fn)
+    def _fn(*args, **kwargs):
+        fn(*args, **kwargs)
+
+    return _fn  # type: ignore
+
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+@click.option("--output-dir", type=click.Path(file_okay=False), required=True)
+@arguments
+def generate(manifest: str, output_dir: str) -> None:
+    manifest_obj = load_manifest(manifest)
+    output_path = Path(output_dir)
+    if not output_path.is_absolute():
+        output_path = Path.cwd() / output_path
+    output_path.mkdir(parents=True, exist_ok=True)
+    do_buildgen(manifest_obj, output_path)
+
+
+@cli.command()
+@click.option("--target", required=True, type=str)
+@arguments
+def run(manifest: str, target: str) -> None:
+    manifest_obj = load_manifest(manifest)
+    with tempfile.TemporaryDirectory() as output_dir:
+        output_path = Path(output_dir)
+        do_buildgen(manifest_obj, output_path)
         subprocess.check_call(
             (
                 "bazelisk",
                 "run",
-                "//:python3_9_server",
+                target,
             ),
-            cwd=tmp_path,
+            cwd=output_path,
         )
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    cli()
