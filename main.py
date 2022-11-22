@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -58,9 +59,15 @@ def main(args: list[str]) -> None:
     manifest_path = manifest_paths[0]
     manifest = Manifest.load(manifest_path)
 
+    cwd = Path.cwd()
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         buildgen.generate_build(tmp_path, manifest)
+
+        # TODO: express this in the manifest somehow...
+        shutil.copy(cwd / "requirements.txt", tmp_path / "requirements.txt")
+        for path in manifest.iter_files():
+            shutil.copy(cwd / path, tmp_dir / path)
 
         # TODO: remove this later...
         if "DEBUG" in os.environ:

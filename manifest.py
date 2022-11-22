@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any
+from typing import Generator
 
 import yaml
 
@@ -82,6 +84,11 @@ class Group:
 @dataclass
 class Manifest:
     groups: list[Group]
+
+    def iter_files(self) -> Generator[Path, None, None]:
+        for group in self.groups:
+            yield Path(group.filename)
+            yield Path(group.dependencies)
 
     @staticmethod
     def from_dict(raw_manifest: dict[str, Any]) -> Manifest:

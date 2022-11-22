@@ -95,4 +95,5 @@ def generate_build(target_dir: Path, manifest: Manifest) -> None:
     (target_dir / "WORKSPACE").write_text(generate_workspace(manifest))
     (target_dir / "BUILD").write_text(generate_root_build(manifest))
     for path, contents in generate_export_builds(manifest).items():
-        (target_dir / path).write_text(contents)
+        (target_dir / path).mkdir(parents=True, exist_ok=True)
+        (target_dir / path / "BUILD").write_text(contents)
