@@ -6,13 +6,14 @@ def cat_dir(dir_path: Path, *, indent: int = 0) -> None:
         if file_path.is_dir():
             pass
 
-        print("=" * len(file_path.name))
-        print(file_path.name)
-        print("=" * len(file_path.name))
+        indent_text = " " * indent
+        print(indent_text, "=" * len(file_path.name), sep="")
+        print(indent_text, file_path.name, sep="")
+        print(indent_text, "=" * len(file_path.name), sep="")
         if file_path.is_dir():
-            # TODO: print sub-dir at some point
-            pass
             cat_dir(file_path, indent=indent + 4)
         else:
             contents = file_path.read_text()
-            print(contents)
+            lines = [f"{indent_text}{line}" for line in contents.splitlines()]
+            print("\n".join(lines))
+            print()
