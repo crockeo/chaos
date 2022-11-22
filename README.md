@@ -1,6 +1,6 @@
 # chaos
 
-`chaos` is a build tool that lets you assemble servers out of many dispoint endpoints.
+`chaos` is a build tool that lets you assemble servers out of many disjoint endpoints.
 Instead of coupling the logic of your application with the infrastructure of hosting it,
 you can define your endpoints and let `chaos` take care of the rest.
 Nice!
