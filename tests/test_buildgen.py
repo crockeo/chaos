@@ -23,15 +23,13 @@ class MockGenerator(BuildGenerator):
         return "mock_build_rules()\n"
 
     def generate_target(self, group: Group) -> str:
-        return f"mock_target_{group.name}\n"
+        return f"mock_target_{group.name}()\n"
 
     def generate_server_target(self, language: Language, groups: list[Group]) -> str:
         rendered_group_names = ",".join(
             group.name for group in sorted(groups, key=lambda group: group.name)
         )
-        return (
-            f"mock_server_target_{get_toolchain_name(language)}({rendered_group_names})"
-        )
+        return f"mock_server_target_{get_toolchain_name(language)}({rendered_group_names})\n"
 
 
 @pytest.fixture
@@ -58,15 +56,16 @@ def test_generate_workspace__one_language(use_mock_generator):
         ],
     )
     workspace = buildgen.generate_workspace(manifest)
-    assert workspace == textwrap.dedent(
-        """\
-        load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-        mock_repository_rules()
+    expected_workspace = """\
+    load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-        mock_toolchain_python3_11()
-        """
-    )
+    mock_repository_rules()
+
+    mock_toolchain_python3_11()
+    """
+    expected_workspace = textwrap.dedent(expected_workspace)
+    assert workspace == expected_workspace
 
 
 def test_generate_workspace__multiple_same_language(use_mock_generator):
@@ -89,15 +88,16 @@ def test_generate_workspace__multiple_same_language(use_mock_generator):
         ],
     )
     workspace = buildgen.generate_workspace(manifest)
-    assert workspace == textwrap.dedent(
-        """\
-        load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-        mock_repository_rules()
+    expected_workspace = """\
+    load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-        mock_toolchain_python3_11()
-        """
-    )
+    mock_repository_rules()
+
+    mock_toolchain_python3_11()
+    """
+    expected_workspace = textwrap.dedent(expected_workspace)
+    assert workspace == expected_workspace
 
 
 def test_generate_workspace__multiple_languages(use_mock_generator):
@@ -120,17 +120,118 @@ def test_generate_workspace__multiple_languages(use_mock_generator):
         ],
     )
     workspace = buildgen.generate_workspace(manifest)
-    assert workspace == textwrap.dedent(
-        """\
-        load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-        mock_repository_rules()
+    expected_workspace = """\
+    load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-        mock_toolchain_python3_10()
+    mock_repository_rules()
 
-        mock_toolchain_python3_11()
-        """
+    mock_toolchain_python3_10()
+
+    mock_toolchain_python3_11()
+    """
+    expected_workspace = textwrap.dedent(expected_workspace)
+    assert workspace == expected_workspace
+
+
+def test_generate_root_build__no_targets():
+    root_build = buildgen.generate_root_build(Manifest(groups=[]))
+    assert root_build == ""
+
+
+def test_generate_root_build__one_target(use_mock_generator):
+    manifest = Manifest(
+        groups=[
+            Group(
+                name="test",
+                language=Language.PYTHON_3_11,
+                filename="something.py",
+                endpoints=[],
+                dependencies="requirements.txt",
+            ),
+        ],
     )
+    root_build = buildgen.generate_root_build(manifest)
+
+    expected_root_build = """\
+    mock_build_rules()
+
+    mock_target_test()
+
+    mock_server_target_python3_11(test)
+    """
+    expected_root_build = textwrap.dedent(expected_root_build)
+    assert root_build == expected_root_build
+
+
+def test_generate_root_build__two_targets_same_language(use_mock_generator):
+    manifest = Manifest(
+        groups=[
+            Group(
+                name="test",
+                language=Language.PYTHON_3_11,
+                filename="something.py",
+                endpoints=[],
+                dependencies="requirements.txt",
+            ),
+            Group(
+                name="test2",
+                language=Language.PYTHON_3_11,
+                filename="subdir/something.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+        ],
+    )
+    root_build = buildgen.generate_root_build(manifest)
+
+    expected_root_build = """\
+    mock_build_rules()
+
+    mock_target_test()
+
+    mock_target_test2()
+
+    mock_server_target_python3_11(test,test2)
+    """
+    expected_root_build = textwrap.dedent(expected_root_build)
+    assert root_build == expected_root_build
+
+
+def test_generate_root_build__two_targets_different_language(use_mock_generator):
+    manifest = Manifest(
+        groups=[
+            Group(
+                name="test",
+                language=Language.PYTHON_3_10,
+                filename="something.py",
+                endpoints=[],
+                dependencies="requirements.txt",
+            ),
+            Group(
+                name="test2",
+                language=Language.PYTHON_3_11,
+                filename="subdir/something.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+        ],
+    )
+    root_build = buildgen.generate_root_build(manifest)
+
+    expected_root_build = """\
+    mock_build_rules()
+
+    mock_target_test()
+
+    mock_target_test2()
+
+    mock_server_target_python3_10(test)
+
+    mock_server_target_python3_11(test2)
+    """
+    expected_root_build = textwrap.dedent(expected_root_build)
+    assert root_build == expected_root_build
 
 
 def test_generate_export_builds__no_files():

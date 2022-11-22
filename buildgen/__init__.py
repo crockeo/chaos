@@ -3,6 +3,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from buildgen.python import PythonBuildGenerator
+from manifest import Group
+from manifest import Language
 from manifest import Manifest
 
 
@@ -39,19 +41,23 @@ def generate_workspace(manifest: Manifest) -> str:
 
 def generate_root_build(manifest: Manifest) -> str:
     language_ids = set()
-    languages = set()
+    languages_to_groups: dict[Language, list[Group]] = defaultdict(list)
     for group in manifest.groups:
         language_ids.add(group.language.id)
-        languages.add(group.language)
+        languages_to_groups[group.language].append(group)
 
     sections = []
-    for language_id in language_ids:
+    for language_id in sorted(language_ids):
         generator = LANGUAGE_TO_GENERATOR[language_id]
         sections.append(generator.generate_build_rules())
 
     for group in manifest.groups:
         generator = LANGUAGE_TO_GENERATOR[group.language.id]
         sections.append(generator.generate_target(group))
+
+    for language, groups in languages_to_groups.items():
+        generator = LANGUAGE_TO_GENERATOR[language.id]
+        sections.append(generator.generate_server_target(language, groups))
 
     return "\n".join(sections)
 
