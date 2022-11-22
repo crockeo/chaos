@@ -159,8 +159,11 @@ def main(args: list[str]) -> None:
 
         for path, file_set in file_sets.items():
             if path == tmp_path:
-                # TODO: implement this
-                raise NotImplementedError
+                # NOTE: we don't need to generate exports_files
+                # for files at the root of the directory tree
+                # because they are automatically visible
+                # to the root BUILD file.
+                continue
             (path / "BUILD").write_text(generate_file_exports(file_set))
 
         targets = []
