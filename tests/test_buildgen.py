@@ -25,6 +25,14 @@ class MockGenerator(BuildGenerator):
     def generate_target(self, group: Group) -> str:
         return f"mock_target_{group.name}\n"
 
+    def generate_server_target(self, language: Language, groups: list[Group]) -> str:
+        rendered_group_names = ",".join(
+            group.name for group in sorted(groups, key=lambda group: group.name)
+        )
+        return (
+            f"mock_server_target_{get_toolchain_name(language)}({rendered_group_names})"
+        )
+
 
 @pytest.fixture
 def use_mock_generator():

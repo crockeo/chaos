@@ -38,7 +38,22 @@ def generate_workspace(manifest: Manifest) -> str:
 
 
 def generate_root_build(manifest: Manifest) -> str:
-    raise NotImplementedError
+    language_ids = set()
+    languages = set()
+    for group in manifest.groups:
+        language_ids.add(group.language.id)
+        languages.add(group.language)
+
+    sections = []
+    for language_id in language_ids:
+        generator = LANGUAGE_TO_GENERATOR[language_id]
+        sections.append(generator.generate_build_rules())
+
+    for group in manifest.groups:
+        generator = LANGUAGE_TO_GENERATOR[group.language.id]
+        sections.append(generator.generate_target(group))
+
+    return "\n".join(sections)
 
 
 def generate_export_builds(manifest: Manifest) -> dict[Path, str]:

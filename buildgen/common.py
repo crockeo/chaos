@@ -41,3 +41,7 @@ class BuildGenerator(ABC):
     @abstractmethod
     def generate_target(self, group: Group) -> str:
         pass
+
+    @abstractmethod
+    def generate_server_target(self, language: Language, groups: list[Group]) -> str:
+        pass

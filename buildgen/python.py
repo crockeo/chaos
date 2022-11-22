@@ -119,6 +119,9 @@ class PythonBuildGenerator(BuildGenerator):
     def generate_target(self, group: Group) -> str:
         raise NotImplementedError
 
+    def generate_server_target(self, language: Language, groups: list[Group]) -> str:
+        raise NotImplementedError
+
 
 def generate_pip_parse(group: Group) -> str:
     target_parts = group.dependencies.split("/")
