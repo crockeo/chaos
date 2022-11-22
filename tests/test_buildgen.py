@@ -52,12 +52,12 @@ def test_generate_workspace__one_language(use_mock_generator):
     workspace = buildgen.generate_workspace(manifest)
     assert workspace == textwrap.dedent(
         """\
-    load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+        load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-    mock_repository_rules()
+        mock_repository_rules()
 
-    mock_toolchain_python3_11()
-    """
+        mock_toolchain_python3_11()
+        """
     )
 
 
@@ -83,12 +83,12 @@ def test_generate_workspace__multiple_same_language(use_mock_generator):
     workspace = buildgen.generate_workspace(manifest)
     assert workspace == textwrap.dedent(
         """\
-    load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+        load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-    mock_repository_rules()
+        mock_repository_rules()
 
-    mock_toolchain_python3_11()
-    """
+        mock_toolchain_python3_11()
+        """
     )
 
 
@@ -114,14 +114,14 @@ def test_generate_workspace__multiple_languages(use_mock_generator):
     workspace = buildgen.generate_workspace(manifest)
     assert workspace == textwrap.dedent(
         """\
-    load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+        load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-    mock_repository_rules()
+        mock_repository_rules()
 
-    mock_toolchain_python3_10()
+        mock_toolchain_python3_10()
 
-    mock_toolchain_python3_11()
-    """
+        mock_toolchain_python3_11()
+        """
     )
 
 
