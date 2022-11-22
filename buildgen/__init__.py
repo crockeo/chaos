@@ -36,6 +36,10 @@ def generate_workspace(manifest: Manifest) -> str:
         generator = LANGUAGE_TO_GENERATOR[language.id]
         sections.append(generator.generate_toolchain(language))
 
+    for group in manifest.groups:
+        generator = LANGUAGE_TO_GENERATOR[group.language.id]
+        sections.append(generator.generate_target_deps(group))
+
     return "\n".join(sections)
 
 

@@ -12,6 +12,10 @@ from manifest import Group
 from manifest import Language
 
 
+# TODO: `server` is essentially a reserved keyword in this setup,
+# but that's not articulated anywhere in the manifest load / validation
+
+
 def get_interpreter_name(language: Language) -> str:
     toolchain_name = get_toolchain_name(language)
     return f"{toolchain_name}_interpreter"
@@ -83,7 +87,23 @@ class PythonBuildGenerator(BuildGenerator):
         return textwrap.dedent(toolchain)
 
     def generate_target_deps(self, group: Group) -> str:
-        raise NotImplementedError
+        group_deps_name = f"{group.name}_deps"
+        requirements_file_target = filename_as_target(group.dependencies)
+        interpreter_name = get_interpreter_name(group.language)
+        install_deps_name = f"{group.name}_install_deps"
+
+        target_deps = f"""\
+        pip_parse(
+            name = "{group_deps_name}",
+            requirements_lock = "{requirements_file_target}",
+            python_interpreter_target = {interpreter_name},
+        )
+
+        load("@{group_deps_name}//:requirements.bzl", {install_deps_name} = "install_deps")
+
+        {install_deps_name}()
+        """
+        return textwrap.dedent(target_deps)
 
     def generate_build_rules(self) -> str:
         build_rules = """\
