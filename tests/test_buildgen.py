@@ -19,6 +19,9 @@ class MockGenerator(BuildGenerator):
     def generate_toolchain(self, language: Language) -> str:
         return f"mock_toolchain_{get_toolchain_name(language)}()\n"
 
+    def generate_target_deps(self, group: Group) -> str:
+        return f"mock_target_deps_{group.name}()\n"
+
     def generate_build_rules(self) -> str:
         return "mock_build_rules()\n"
 
@@ -63,6 +66,8 @@ def test_generate_workspace__one_language(use_mock_generator):
     mock_repository_rules()
 
     mock_toolchain_python3_11()
+
+    mock_target_deps_test()
     """
     expected_workspace = textwrap.dedent(expected_workspace)
     assert workspace == expected_workspace
@@ -95,6 +100,10 @@ def test_generate_workspace__multiple_same_language(use_mock_generator):
     mock_repository_rules()
 
     mock_toolchain_python3_11()
+
+    mock_target_deps_test()
+
+    mock_target_deps_test2()
     """
     expected_workspace = textwrap.dedent(expected_workspace)
     assert workspace == expected_workspace
@@ -129,6 +138,10 @@ def test_generate_workspace__multiple_languages(use_mock_generator):
     mock_toolchain_python3_10()
 
     mock_toolchain_python3_11()
+
+    mock_target_deps_test()
+
+    mock_target_deps_test2()
     """
     expected_workspace = textwrap.dedent(expected_workspace)
     assert workspace == expected_workspace
