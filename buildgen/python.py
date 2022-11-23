@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
 from packaging.requirements import Requirement
 
 from buildgen.common import BuildGenerator
 from buildgen.common import filename_as_target
 from buildgen.common import get_toolchain_name
+from config import TEMPLATES_DIRECTORY
 from manifest import Group
 from manifest import Language
 
@@ -21,125 +23,71 @@ def get_interpreter_name(language: Language) -> str:
     return f"{toolchain_name}_interpreter"
 
 
-def get_server_deps_name(language: Language) -> str:
-    toolchain_name = get_toolchain_name(language)
-    return f"{toolchain_name}_server_deps"
-
-
 def get_install_deps_name(language: Language) -> str:
     toolchain_name = get_toolchain_name(language)
     return f"{toolchain_name}_install_deps_server"
 
 
-def load_requirements_deps(requirement_name: str, dependencies: str) -> str:
-    deps_path = Path.cwd() / dependencies
+def load_requirements(requirements_txt: str) -> list[str]:
+    requirements_path = Path(requirements_txt)
+    if not requirements_path.is_absolute():
+        requirements_path = Path.cwd() / requirements_path
 
-    deps = []
-    for line in deps_path.read_text().splitlines():
+    requirements = []
+    for line in requirements_path.read_text().splitlines():
         line = line.strip()
         if line.startswith("#"):
             continue
 
-        # NOTE: This requires that requirement files
-        # have no other text except for comments and requirements.
-        req = Requirement(line)
-        deps.append(f'{requirement_name}("{req.name}")')
-    return ",".join(deps)
+        requirement = Requirement(line)
+        requirements.append(requirement.name)
+    return requirements
 
 
 class PythonBuildGenerator(BuildGenerator):
-    def generate_repository_rules(self) -> str:
-        repository_rules = """\
-        http_archive(
-            name = "rules_python",
-            sha256 = "8c8fe44ef0a9afc256d1e75ad5f448bb59b81aba149b8958f02f7b3a98f5d9b4",
-            strip_prefix = "rules_python-0.13.0",
-            url = "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.13.0.tar.gz",
+    def __init__(self):
+        self.env = Environment(
+            loader=FileSystemLoader(TEMPLATES_DIRECTORY / "python"),
+            keep_trailing_newline=True,
+            trim_blocks=True,
+            lstrip_blocks=True,
         )
-        load("@rules_python//python:pip.bzl", "pip_parse")
-        load("@rules_python//python:repositories.bzl", "python_register_toolchains")
-        """
-        return textwrap.dedent(repository_rules)
+
+    def generate_repository_rules(self) -> str:
+        return self.env.get_template("repository_rules.jinja2.WORKSPACE").render()
 
     def generate_toolchain(self, language: Language) -> str:
-        toolchain_name = get_toolchain_name(language)
-        interpreter_name = get_interpreter_name(language)
-        server_deps_name = get_server_deps_name(language)
-        install_deps_name = get_install_deps_name(language)
-        toolchain = f"""\
-        python_register_toolchains(
-            name = "{toolchain_name}",
-            python_version = "{language.formatted_version()}",
+        template = self.env.get_template("toolchain.jinja2.WORKSPACE")
+        return template.render(
+            toolchain_name=get_toolchain_name(language),
+            interpreter_name=get_interpreter_name(language),
+            python_version=language.formatted_version(),
+            install_deps_name=get_install_deps_name(language),
         )
-
-        load("@{toolchain_name}//:defs.bzl", {interpreter_name} = "interpreter")
-
-        pip_parse(
-            name = "{server_deps_name}",
-            requirements_lock = "//:requirements.txt",
-            python_interpreter_target = {interpreter_name},
-        )
-
-        load("@{server_deps_name}//:requirements.bzl", {install_deps_name} = "install_deps")
-
-        {install_deps_name}()
-        """
-        return textwrap.dedent(toolchain)
 
     def generate_target_deps(self, group: Group) -> str:
-        group_deps_name = f"{group.name}_deps"
-        requirements_file_target = filename_as_target(group.dependencies)
-        interpreter_name = get_interpreter_name(group.language)
-        install_deps_name = f"{group.name}_install_deps"
-
-        target_deps = f"""\
-        pip_parse(
-            name = "{group_deps_name}",
-            requirements_lock = "{requirements_file_target}",
-            python_interpreter_target = {interpreter_name},
+        template = self.env.get_template("target_deps.jinja2.WORKSPACE")
+        return template.render(
+            group_name=group.name,
+            requirements_file_target=filename_as_target(group.dependencies),
+            interpreter_name=get_interpreter_name(group.language),
         )
-
-        load("@{group_deps_name}//:requirements.bzl", {install_deps_name} = "install_deps")
-
-        {install_deps_name}()
-        """
-        return textwrap.dedent(target_deps)
 
     def generate_build_rules(self) -> str:
-        build_rules = """\
-        load("@rules_python//python:defs.bzl", "py_binary", "py_library")
-        """
-        return textwrap.dedent(build_rules)
+        return self.env.get_template("build_rules.jinja2.BUILD").render()
 
     def generate_target(self, group: Group) -> str:
-        requirement_name = f"requirement_{group.name}"
-        rendered_deps = load_requirements_deps(requirement_name, group.dependencies)
-
-        target = f"""\
-        load("@{group.name}_deps//:requirements.bzl", {requirement_name} = "requirement")
-
-        py_library(
-            name = "{group.name}",
-            srcs = ["{filename_as_target(group.filename)}"],
-            deps = [{rendered_deps}],
+        template = self.env.get_template("target.jinja2.BUILD")
+        return template.render(
+            group_name=group.name,
+            group_target=filename_as_target(group.filename),
+            requirements=load_requirements(group.dependencies),
         )
-        """
-        return textwrap.dedent(target)
 
     def generate_server_target(self, language: Language, groups: list[Group]) -> str:
-        toolchain_name = get_toolchain_name(language)
-        server_deps_name = get_server_deps_name(language)
-        requirement_name = f"{toolchain_name}_requirement_server"
-
-        group_deps = ",".join(f'":{group.name}"' for group in groups)
-        requirements_deps = load_requirements_deps(requirement_name, "requirements.txt")
-        server_target = f"""\
-        load("@{server_deps_name}//:requirements.bzl", {requirement_name} = "requirement")
-
-        py_binary(
-            name = "{toolchain_name}_server",
-            srcs = [":{toolchain_name}_server.py"],
-            deps = [{group_deps},{requirements_deps}],
+        template = self.env.get_template("server_target.jinja2.BUILD")
+        return template.render(
+            toolchain_name=get_toolchain_name(language),
+            groups=[group.name for group in groups],
+            requirements=load_requirements("requirements.txt"),
         )
-        """
-        return textwrap.dedent(server_target)
