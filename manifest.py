@@ -28,15 +28,23 @@ class Language(Enum):
     def version(self) -> tuple[int, ...]:
         return self.value[1]
 
-    def formatted_version(self) -> str:
-        _, version = self.value
-        return ".".join(str(part) for part in version)
-
+    @property
     def toolchain_name(self) -> str:
         language_id, _ = self.value
         formatted_version = self.formatted_version()
         formatted_version = formatted_version.replace(".", "_")
         return f"{language_id}{formatted_version}"
+
+    @property
+    def file_suffix(self) -> str:
+        if self.id == "python":
+            return "py"
+        # TODO: exception type
+        raise NotImplementedError
+
+    def formatted_version(self) -> str:
+        _, version = self.value
+        return ".".join(str(part) for part in version)
 
     def format(self) -> str:
         language, _ = self.value

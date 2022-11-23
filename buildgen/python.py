@@ -91,3 +91,22 @@ class PythonBuildGenerator(BuildGenerator):
             groups=[group.name for group in groups],
             requirements=load_requirements("requirements.txt"),
         )
+
+    def generate_server(self, language: Language, groups: list[Group]) -> str:
+        template = self.env.get_template("server.jinja2")
+
+        targets = []
+        for group in groups:
+            dirname, _, filename = group.filename.rpartition("/")
+            filename, _, _ = filename.rpartition(".")
+
+            dot_directory = dirname.replace("/", ".")
+            fully_qualified_name = dirname.replace("/", "_")
+            fully_qualified_name = f"{fully_qualified_name}_{filename}"
+
+            targets.append((dot_directory, filename, fully_qualified_name))
+
+        return template.render(
+            targets=targets,
+            toolchain_name=get_toolchain_name(language),
+        )

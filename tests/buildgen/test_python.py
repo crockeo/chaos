@@ -155,3 +155,36 @@ def test_python_build_generator__server_target(tmp_path):
     """
     expected_server_target = textwrap.dedent(expected_server_target)
     assert server_target == expected_server_target
+
+
+def test_python_build_generator__server():
+    generator = python.PythonBuildGenerator()
+    server = generator.generate_server(
+        Language.PYTHON_3_10,
+        [
+            Group(
+                name="test",
+                language=Language.PYTHON_3_10,
+                filename="path/to/endpoint/something.py",
+                endpoints=[],
+                dependencies="path/to/endpoint/requirements.txt",
+            ),
+        ],
+    )
+
+    expected_server = """\
+    import fastapi
+    import uvicorn
+
+    app = fastapi.FastAPI()
+
+
+    from path.to.endpoint import something as path_to_endpoint_something
+    app.include_router(path_to_endpoint_something.router)
+
+
+    if __name__ == "__main__":
+        uvicorn.run("python3_10_server:app", port=8080, log_level="info")
+    """
+    expected_server = textwrap.dedent(expected_server)
+    assert server == expected_server

@@ -34,6 +34,10 @@ class MockGenerator(BuildGenerator):
         )
         return f"mock_server_target_{get_toolchain_name(language)}({rendered_group_names})\n"
 
+    def generate_server(self, language: Language, groups: list[Group]) -> str:
+        rendered_groups = ",".join(group.name for group in groups)
+        return f"{language.toolchain_name}_imports({rendered_groups})\n"
+
 
 @pytest.fixture
 def use_mock_generator():
@@ -283,4 +287,78 @@ def test_generate_export_builds__single_sub_dir():
     export_builds = buildgen.generate_export_builds(manifest)
     assert export_builds == {
         Path("subdir"): 'exports_files(["requirements.txt","something.py"])\n'
+    }
+
+
+def test_generate_servers__nothing():
+    servers = buildgen.generate_servers(Manifest([]))
+    assert servers == {}
+
+
+def test_generate_servers__one(use_mock_generator):
+    manifest = Manifest(
+        groups=[
+            Group(
+                name="test",
+                language=Language.PYTHON_3_11,
+                filename="subdir/something.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+        ],
+    )
+    servers = buildgen.generate_servers(manifest)
+    assert servers == {
+        "python3_11_server.py": "python3_11_imports(test)\n",
+    }
+
+
+def test_generate_servers__multiple_same_language(use_mock_generator):
+    manifest = Manifest(
+        groups=[
+            Group(
+                name="test",
+                language=Language.PYTHON_3_11,
+                filename="subdir/something.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+            Group(
+                name="test2",
+                language=Language.PYTHON_3_11,
+                filename="subdir/something_else.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+        ],
+    )
+    servers = buildgen.generate_servers(manifest)
+    assert servers == {
+        "python3_11_server.py": "python3_11_imports(test,test2)\n",
+    }
+
+
+def test_generate_servers__multiple_different_languages(use_mock_generator):
+    manifest = Manifest(
+        groups=[
+            Group(
+                name="test",
+                language=Language.PYTHON_3_10,
+                filename="subdir/something.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+            Group(
+                name="test2",
+                language=Language.PYTHON_3_11,
+                filename="subdir/something_else.py",
+                endpoints=[],
+                dependencies="subdir/requirements.txt",
+            ),
+        ],
+    )
+    servers = buildgen.generate_servers(manifest)
+    assert servers == {
+        "python3_10_server.py": "python3_10_imports(test)\n",
+        "python3_11_server.py": "python3_11_imports(test2)\n",
     }

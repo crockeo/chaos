@@ -1,0 +1,14 @@
+import fastapi
+import uvicorn
+
+app = fastapi.FastAPI()
+
+
+{% for dot_directory, filename, fully_qualified_name in targets %}
+from {{ dot_directory }} import {{ filename }} as {{ fully_qualified_name }}
+app.include_router({{ fully_qualified_name }}.router)
+{% endfor %}
+
+
+if __name__ == "__main__":
+    uvicorn.run("{{ toolchain_name }}_server:app", port=8080, log_level="info")
