@@ -42,6 +42,7 @@ python main.py run --manifest fixtures/manifest.yaml --target //:python3_10_serv
       Separate codegen into classes which are specialized per-ecosystem.
 - [ ] Move over to a more scalable templating system (e.g. `jinja2`).
   - [ ] Move things over to jinja2 templating.
+  - [ ] Move server templating into standard templating.
   - [ ] Standardize parameter generation so that it's easier to make sure everything aligns.
   - [ ] Make server dependency generation a special case of normal target generation.
 - [ ] Let people plug + play with their ASGI server + framework.
