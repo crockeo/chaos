@@ -41,7 +41,7 @@ python main.py run --manifest fixtures/manifest.yaml --target //:python3_10_serv
 - [x] Groundwork to make it scalable across multiple ecosystems.
       Separate codegen into classes which are specialized per-ecosystem.
 - [x] Move over to a more scalable templating system (e.g. `jinja2`).
-- [ ] Improve styling of templates.
+- [x] Improve styling of templates.
 - [ ] Move server templating into standard templating.
 - [ ] Standardize parameter generation so that it's easier to make sure everything aligns.
 - [ ] Make server dependency generation a special case of normal target generation.

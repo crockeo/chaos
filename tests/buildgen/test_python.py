@@ -111,7 +111,9 @@ def test_python_build_generator__target(tmp_path):
     py_library(
         name = "test",
         srcs = ["//:something.py"],
-        deps = [requirement_test("somedep")],
+        deps = [
+            requirement_test("somedep"),
+        ],
     )
     """
     expected_target = textwrap.dedent(expected_target)
@@ -145,7 +147,10 @@ def test_python_build_generator__server_target(tmp_path):
     py_binary(
         name = "python3_10_server",
         srcs = [":python3_10_server.py"],
-        deps = [":test",python3_10_requirement_server("somedep")],
+        deps = [
+            ":test",
+            python3_10_requirement_server("somedep"),
+        ],
     )
     """
     expected_server_target = textwrap.dedent(expected_server_target)
