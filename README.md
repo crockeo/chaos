@@ -22,32 +22,14 @@ pip install -r dev_requirements.txt
 # 2) generate and run a target in one command
 
 # option 1)
-python main.py generate --manifest fixtures/manifest.yaml --out gen
+python main.py generate --manifest fixtures/manifest.yaml --output-dir gen --language python3.9
 cd gen
-bazelisk run //:python3_9_server
-bazelisk run //:python3_10_server
+bazelisk run //:server
 
 # option 2)
-python main.py run --manifest fixtures/manifest.yaml --target //:python3_9_server
-python main.py run --manifest fixtures/manifest.yaml --target //:python3_10_server
+python main.py run --manifest fixtures/manifest.yaml --language python3.9
+python main.py run --manifest fixtures/manifest.yaml --language python3.10
 ```
-
-## Roadmap
-
-- [x] Proof-of-concept that lets you assemble a server of out many small endpoints.
-      Scoped to:
-      - Python.
-      - A single ASGI server + framework (uvicorn & fastAPI).
-- [x] Groundwork to make it scalable across multiple ecosystems.
-      Separate codegen into classes which are specialized per-ecosystem.
-- [x] Move over to a more scalable templating system (e.g. `jinja2`).
-- [x] Improve styling of templates.
-- [x] Move server templating into standard templating.
-- [ ] Standardize parameter generation so that it's easier to make sure everything aligns.
-- [ ] Make server dependency generation a special case of normal target generation.
-- [ ] Proof-of-concept implementation for Golang.
-- [ ] Let people plug + play with their ASGI server + framework.
-- [ ] Let people plug + play with their Go server + framework.
 
 ## License
 
