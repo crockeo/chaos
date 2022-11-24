@@ -53,7 +53,7 @@ class BuildGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate_build_rules(self) -> str:
+    def generate_build_rules(self, languages: list[Language]) -> str:
         """\
         Loads the build rules necessary to define endpoints and servers.
         This is typically library rules for endpoints (like `py_library`)

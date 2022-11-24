@@ -73,13 +73,17 @@ class PythonBuildGenerator(BuildGenerator):
             interpreter_name=get_interpreter_name(group.language),
         )
 
-    def generate_build_rules(self) -> str:
-        return self.env.get_template("build_rules.jinja2.BUILD").render()
+    def generate_build_rules(self, languages: list[Language]) -> str:
+        template = self.env.get_template("build_rules.jinja2.BUILD")
+        return template.render(
+            toolchain_names=[language.toolchain_name for language in languages],
+        )
 
     def generate_target(self, group: Group) -> str:
         template = self.env.get_template("target.jinja2.BUILD")
         return template.render(
             group_name=group.name,
+            interpreter_name=get_interpreter_name(group.language),
             group_target=filename_as_target(group.filename),
             requirements=load_requirements(group.dependencies),
         )
@@ -88,6 +92,7 @@ class PythonBuildGenerator(BuildGenerator):
         template = self.env.get_template("server_target.jinja2.BUILD")
         return template.render(
             toolchain_name=get_toolchain_name(language),
+            interpreter_name=get_interpreter_name(language),
             groups=[group.name for group in groups],
             requirements=load_requirements("requirements.txt"),
         )

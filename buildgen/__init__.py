@@ -44,16 +44,19 @@ def generate_workspace(manifest: Manifest) -> str:
 
 
 def generate_root_build(manifest: Manifest) -> str:
-    language_ids = set()
+    language_ids_to_languages: dict[str, set[Language]] = defaultdict(set)
     languages_to_groups: dict[Language, list[Group]] = defaultdict(list)
     for group in manifest.groups:
-        language_ids.add(group.language.id)
+        language_ids_to_languages[group.language.id].add(group.language)
         languages_to_groups[group.language].append(group)
 
     sections = []
-    for language_id in sorted(language_ids):
+    for language_id, languages in sorted(language_ids_to_languages.items()):
+        # TODO: make it so you can do `sorted` on `Language`. define an ordering function?
+        # NOTE: maintain sort order for testing
+        sorted_languages = list(sorted(languages, key=lambda language: language.value))
         generator = LANGUAGE_TO_GENERATOR[language_id]
-        sections.append(generator.generate_build_rules())
+        sections.append(generator.generate_build_rules(sorted_languages))
 
     for group in manifest.groups:
         generator = LANGUAGE_TO_GENERATOR[group.language.id]

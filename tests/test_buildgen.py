@@ -22,8 +22,9 @@ class MockGenerator(BuildGenerator):
     def generate_target_deps(self, group: Group) -> str:
         return f"mock_target_deps_{group.name}()\n"
 
-    def generate_build_rules(self) -> str:
-        return "mock_build_rules()\n"
+    def generate_build_rules(self, languages: list[Language]) -> str:
+        rendered_languages = ",".join(language.toolchain_name for language in languages)
+        return f"mock_build_rules({rendered_languages})\n"
 
     def generate_target(self, group: Group) -> str:
         return f"mock_target_{group.name}()\n"
@@ -171,7 +172,7 @@ def test_generate_root_build__one_target(use_mock_generator):
     root_build = buildgen.generate_root_build(manifest)
 
     expected_root_build = """\
-    mock_build_rules()
+    mock_build_rules(python3_11)
 
     mock_target_test()
 
@@ -203,7 +204,7 @@ def test_generate_root_build__two_targets_same_language(use_mock_generator):
     root_build = buildgen.generate_root_build(manifest)
 
     expected_root_build = """\
-    mock_build_rules()
+    mock_build_rules(python3_11)
 
     mock_target_test()
 
@@ -237,7 +238,7 @@ def test_generate_root_build__two_targets_different_language(use_mock_generator)
     root_build = buildgen.generate_root_build(manifest)
 
     expected_root_build = """\
-    mock_build_rules()
+    mock_build_rules(python3_10,python3_11)
 
     mock_target_test()
 

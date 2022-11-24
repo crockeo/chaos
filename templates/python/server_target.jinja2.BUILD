@@ -2,6 +2,7 @@ load("@{{ toolchain_name }}_server_deps//:requirements.bzl", {{ toolchain_name }
 
 py_binary(
     name = "{{ toolchain_name }}_server",
+    interpreter = {{ interpreter_name }},
     srcs = [":{{ toolchain_name }}_server.py"],
     deps = [
         {% for group in groups %}

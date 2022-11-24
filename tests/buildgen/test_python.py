@@ -76,12 +76,28 @@ def test_python_build_generator__target_deps():
     assert target_deps == expected_target_deps
 
 
-def test_python_build_generator__build_rules():
+def test_python_build_generator__build_rules_single():
     generator = python.PythonBuildGenerator()
-    build_rules = generator.generate_build_rules()
+    build_rules = generator.generate_build_rules([Language.PYTHON_3_10])
 
     expected_build_rules = """\
     load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+    load("@python3_10//:defs.bzl", python3_10_interpreter = "interpreter")
+    """
+    expected_build_rules = textwrap.dedent(expected_build_rules)
+    assert build_rules == expected_build_rules
+
+
+def test_python_build_generator__build_rules__multiple():
+    generator = python.PythonBuildGenerator()
+    build_rules = generator.generate_build_rules(
+        [Language.PYTHON_3_10, Language.PYTHON_3_11]
+    )
+
+    expected_build_rules = """\
+    load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+    load("@python3_10//:defs.bzl", python3_10_interpreter = "interpreter")
+    load("@python3_11//:defs.bzl", python3_11_interpreter = "interpreter")
     """
     expected_build_rules = textwrap.dedent(expected_build_rules)
     assert build_rules == expected_build_rules
@@ -110,6 +126,7 @@ def test_python_build_generator__target(tmp_path):
 
     py_library(
         name = "test",
+        interpreter = python3_10_interpreter,
         srcs = ["//:something.py"],
         deps = [
             requirement_test("somedep"),
@@ -146,6 +163,7 @@ def test_python_build_generator__server_target(tmp_path):
 
     py_binary(
         name = "python3_10_server",
+        interpreter = python3_10_interpreter,
         srcs = [":python3_10_server.py"],
         deps = [
             ":test",
