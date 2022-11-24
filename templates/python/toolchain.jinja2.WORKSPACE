@@ -1,16 +1,16 @@
 python_register_toolchains(
-    name = "{{ toolchain_name }}",
+    name = "python_toolchain",
     python_version = "{{ python_version }}",
 )
 
-load("@{{ toolchain_name }}//:defs.bzl", {{ interpreter_name }} = "interpreter")
+load("@python_toolchain//:defs.bzl", "interpreter")
 
 pip_parse(
-    name = "{{ toolchain_name }}_server_deps",
+    name = "server_deps",
     requirements_lock = "//:requirements.txt",
-    python_interpreter_target = {{ interpreter_name }},
+    python_interpreter_target = interpreter,
 )
 
-load("@{{ toolchain_name }}_server_deps//:requirements.bzl", {{ install_deps_name }} = "install_deps")
+load("@server_deps//:requirements.bzl", server_install_deps = "install_deps")
 
-{{ install_deps_name }}()
+server_install_deps()

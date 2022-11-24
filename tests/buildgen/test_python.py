@@ -29,21 +29,21 @@ def test_python_build_generator__toolchain():
 
     expected_toolchain = """\
     python_register_toolchains(
-        name = "python3_10",
+        name = "python_toolchain",
         python_version = "3.10",
     )
 
-    load("@python3_10//:defs.bzl", python3_10_interpreter = "interpreter")
+    load("@python_toolchain//:defs.bzl", "interpreter")
 
     pip_parse(
-        name = "python3_10_server_deps",
+        name = "server_deps",
         requirements_lock = "//:requirements.txt",
-        python_interpreter_target = python3_10_interpreter,
+        python_interpreter_target = interpreter,
     )
 
-    load("@python3_10_server_deps//:requirements.bzl", python3_10_install_deps_server = "install_deps")
+    load("@server_deps//:requirements.bzl", server_install_deps = "install_deps")
 
-    python3_10_install_deps_server()
+    server_install_deps()
     """
     expected_toolchain = textwrap.dedent(expected_toolchain)
     assert toolchain == expected_toolchain
@@ -65,7 +65,7 @@ def test_python_build_generator__target_deps():
     pip_parse(
         name = "test_deps",
         requirements_lock = "//:requirements.txt",
-        python_interpreter_target = python3_10_interpreter,
+        python_interpreter_target = interpreter,
     )
 
     load("@test_deps//:requirements.bzl", test_install_deps = "install_deps")
@@ -129,7 +129,6 @@ def test_python_build_generator__server_target(tmp_path):
 
     generator = python.PythonBuildGenerator()
     server_target = generator.generate_server_target(
-        Language.PYTHON_3_10,
         [
             Group(
                 name="test",
@@ -142,14 +141,14 @@ def test_python_build_generator__server_target(tmp_path):
     )
 
     expected_server_target = """\
-    load("@python3_10_server_deps//:requirements.bzl", python3_10_requirement_server = "requirement")
+    load("@server_deps//:requirements.bzl", requirement_server = "requirement")
 
     py_binary(
-        name = "python3_10_server",
-        srcs = [":python3_10_server.py"],
+        name = "server",
+        srcs = [":server.py"],
         deps = [
             ":test",
-            python3_10_requirement_server("somedep"),
+            requirement_server("somedep"),
         ],
     )
     """
@@ -160,7 +159,6 @@ def test_python_build_generator__server_target(tmp_path):
 def test_python_build_generator__server():
     generator = python.PythonBuildGenerator()
     server = generator.generate_server(
-        Language.PYTHON_3_10,
         [
             Group(
                 name="test",
@@ -184,7 +182,7 @@ def test_python_build_generator__server():
 
 
     if __name__ == "__main__":
-        uvicorn.run("python3_10_server:app", port=8080, log_level="info")
+        uvicorn.run("server:app", port=8080, log_level="info")
     """
     expected_server = textwrap.dedent(expected_server)
     assert server == expected_server

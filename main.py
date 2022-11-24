@@ -22,7 +22,7 @@ def do_buildgen(manifest: Manifest, language: Language, target_path: Path) -> No
     manifest.groups = [group for group in manifest.groups if group.language == language]
 
     cwd = Path.cwd()
-    buildgen.generate_build(target_path, manifest)
+    buildgen.generate_build(target_path, language, manifest)
 
     # TODO: express this in the manifest somehow...
     shutil.copy(cwd / "requirements.txt", target_path / "requirements.txt")
@@ -76,9 +76,8 @@ def generate(manifest: str, language: str, output_dir: str) -> None:
 
 
 @cli.command()
-@click.option("--target", required=True, type=str)
 @arguments
-def run(manifest: str, language: str, target: str) -> None:
+def run(manifest: str, language: str) -> None:
     manifest_obj = load_manifest(manifest)
     with tempfile.TemporaryDirectory() as output_dir:
         output_path = Path(output_dir)
@@ -87,7 +86,7 @@ def run(manifest: str, language: str, target: str) -> None:
             (
                 "bazelisk",
                 "run",
-                target,
+                "//:server",
             ),
             cwd=output_path,
         )

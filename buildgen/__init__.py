@@ -61,7 +61,7 @@ def generate_root_build(manifest: Manifest) -> str:
 
     for language, groups in languages_to_groups.items():
         generator = LANGUAGE_TO_GENERATOR[language.id]
-        sections.append(generator.generate_server_target(language, groups))
+        sections.append(generator.generate_server_target(groups))
 
     return "\n".join(sections)
 
@@ -95,25 +95,15 @@ def generate_export_builds(manifest: Manifest) -> dict[Path, str]:
     return build_files
 
 
-def generate_servers(manifest: Manifest) -> dict[str, str]:
-    languages_to_groups: dict[Language, list[Group]] = defaultdict(list)
-    for group in manifest.groups:
-        languages_to_groups[group.language].append(group)
-
-    servers = {}
-    for language, groups in languages_to_groups.items():
-        generator = LANGUAGE_TO_GENERATOR[language.id]
-        server_filename = f"{language.toolchain_name}_server.{language.file_suffix}"
-        server_contents = generator.generate_server(language, groups)
-        servers[server_filename] = server_contents
-    return servers
-
-
-def generate_build(target_dir: Path, manifest: Manifest) -> None:
+def generate_build(target_dir: Path, language: Language, manifest: Manifest) -> None:
     (target_dir / "WORKSPACE").write_text(generate_workspace(manifest))
     (target_dir / "BUILD").write_text(generate_root_build(manifest))
+
     for path, contents in generate_export_builds(manifest).items():
         (target_dir / path).mkdir(parents=True, exist_ok=True)
         (target_dir / path / "BUILD").write_text(contents)
-    for filename, contents in generate_servers(manifest).items():
-        (target_dir / filename).write_text(contents)
+
+    generator = LANGUAGE_TO_GENERATOR[language.id]
+    (target_dir / f"server.{language.file_suffix}").write_text(
+        generator.generate_server(manifest.groups)
+    )
