@@ -11,7 +11,7 @@ from manifest import Language
 class GoBuildGenerator(BuildGenerator):
     def __init__(self):
         self.env = Environment(
-            loader=FileSystemLoader(TEMPLATES_DIRECTORY / "python"),
+            loader=FileSystemLoader(TEMPLATES_DIRECTORY / "go"),
             keep_trailing_newline=True,
             trim_blocks=True,
             lstrip_blocks=True,
