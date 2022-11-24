@@ -3,7 +3,6 @@ from collections import defaultdict
 from pathlib import Path
 
 from buildgen.python import PythonBuildGenerator
-from manifest import Group
 from manifest import Language
 from manifest import Manifest
 
@@ -17,66 +16,35 @@ LANGUAGE_TO_GENERATOR = {
 }
 
 
-def generate_workspace(manifest: Manifest) -> str:
-    language_ids = set()
-    languages = set()
+def generate_workspace(language: Language, manifest: Manifest) -> str:
+    generator = LANGUAGE_TO_GENERATOR[language.id]
+
+    sections = [
+        HTTP_ARCHIVE,
+        generator.generate_repository_rules(),
+        generator.generate_toolchain(language),
+    ]
     for group in manifest.groups:
-        language_ids.add(group.language.id)
-        languages.add(group.language)
-
-    sections = []
-    if languages:
-        sections.append(HTTP_ARCHIVE)
-
-    for language_id in language_ids:
-        generator = LANGUAGE_TO_GENERATOR[language_id]
-        sections.append(generator.generate_repository_rules())
-
-    for language in sorted(languages, key=lambda language: language.value):
-        generator = LANGUAGE_TO_GENERATOR[language.id]
-        sections.append(generator.generate_toolchain(language))
-
-    for group in manifest.groups:
-        generator = LANGUAGE_TO_GENERATOR[group.language.id]
         sections.append(generator.generate_target_deps(group))
 
     return "\n".join(sections)
 
 
-def generate_root_build(manifest: Manifest) -> str:
-    language_ids = set()
-    languages_to_groups: dict[Language, list[Group]] = defaultdict(list)
-    for group in manifest.groups:
-        language_ids.add(group.language.id)
-        languages_to_groups[group.language].append(group)
+def generate_root_build(language: Language, manifest: Manifest) -> str:
+    generator = LANGUAGE_TO_GENERATOR[language.id]
 
-    sections = []
-    for language_id in sorted(language_ids):
-        generator = LANGUAGE_TO_GENERATOR[language_id]
-        sections.append(generator.generate_build_rules())
-
+    sections = [generator.generate_build_rules()]
     for group in manifest.groups:
-        generator = LANGUAGE_TO_GENERATOR[group.language.id]
         sections.append(generator.generate_target(group))
-
-    for language, groups in languages_to_groups.items():
-        generator = LANGUAGE_TO_GENERATOR[language.id]
-        sections.append(generator.generate_server_target(groups))
+    sections.append(generator.generate_server_target(manifest.groups))
 
     return "\n".join(sections)
 
 
 def generate_export_builds(manifest: Manifest) -> dict[Path, str]:
     filename_groups: dict[Path, set[str]] = defaultdict(set)
-    for group in manifest.groups:
-        # TODO: generalize this so people can bring in more deps...
-        filenames = {
-            group.filename,
-            group.dependencies,
-        }
-        for filename in filenames:
-            path = Path(filename)
-            filename_groups[path.parent].add(path.name)
+    for path in manifest.iter_files():
+        filename_groups[path.parent].add(path.name)
 
     build_files: dict[Path, str] = {}
     for path, filenames in filename_groups.items():
@@ -96,8 +64,8 @@ def generate_export_builds(manifest: Manifest) -> dict[Path, str]:
 
 
 def generate_build(target_dir: Path, language: Language, manifest: Manifest) -> None:
-    (target_dir / "WORKSPACE").write_text(generate_workspace(manifest))
-    (target_dir / "BUILD").write_text(generate_root_build(manifest))
+    (target_dir / "WORKSPACE").write_text(generate_workspace(language, manifest))
+    (target_dir / "BUILD").write_text(generate_root_build(language, manifest))
 
     for path, contents in generate_export_builds(manifest).items():
         (target_dir / path).mkdir(parents=True, exist_ok=True)

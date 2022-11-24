@@ -44,11 +44,6 @@ def use_mock_generator():
         yield
 
 
-def test_generate_workspace__none():
-    workspace = buildgen.generate_workspace(Manifest(groups=[]))
-    assert workspace == ""
-
-
 def test_generate_workspace__one(use_mock_generator):
     manifest = Manifest(
         groups=[
@@ -61,7 +56,7 @@ def test_generate_workspace__one(use_mock_generator):
             ),
         ],
     )
-    workspace = buildgen.generate_workspace(manifest)
+    workspace = buildgen.generate_workspace(Language.PYTHON_3_11, manifest)
 
     expected_workspace = """\
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -95,7 +90,7 @@ def test_generate_workspace__multiple(use_mock_generator):
             ),
         ],
     )
-    workspace = buildgen.generate_workspace(manifest)
+    workspace = buildgen.generate_workspace(Language.PYTHON_3_11, manifest)
 
     expected_workspace = """\
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -112,11 +107,6 @@ def test_generate_workspace__multiple(use_mock_generator):
     assert workspace == expected_workspace
 
 
-def test_generate_root_build__none():
-    root_build = buildgen.generate_root_build(Manifest(groups=[]))
-    assert root_build == ""
-
-
 def test_generate_root_build__one(use_mock_generator):
     manifest = Manifest(
         groups=[
@@ -129,7 +119,7 @@ def test_generate_root_build__one(use_mock_generator):
             ),
         ],
     )
-    root_build = buildgen.generate_root_build(manifest)
+    root_build = buildgen.generate_root_build(Language.PYTHON_3_11, manifest)
 
     expected_root_build = """\
     mock_build_rules()
@@ -161,7 +151,7 @@ def test_generate_root_build__multiple(use_mock_generator):
             ),
         ],
     )
-    root_build = buildgen.generate_root_build(manifest)
+    root_build = buildgen.generate_root_build(Language.PYTHON_3_11, manifest)
 
     expected_root_build = """\
     mock_build_rules()
@@ -195,7 +185,7 @@ def test_generate_root_build__two_targets_different_language(use_mock_generator)
             ),
         ],
     )
-    root_build = buildgen.generate_root_build(manifest)
+    root_build = buildgen.generate_root_build(Language.PYTHON_3_11, manifest)
 
     expected_root_build = """\
     mock_build_rules()
@@ -204,9 +194,7 @@ def test_generate_root_build__two_targets_different_language(use_mock_generator)
 
     mock_target_test2()
 
-    mock_server_target(test)
-
-    mock_server_target(test2)
+    mock_server_target(test,test2)
     """
     expected_root_build = textwrap.dedent(expected_root_build)
     assert root_build == expected_root_build
