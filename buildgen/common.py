@@ -19,12 +19,6 @@ def filename_as_target(filename: str) -> str:
     return f"//{directory}:{filename}"
 
 
-def get_toolchain_name(language: Language) -> str:
-    formatted_version = language.formatted_version()
-    formatted_version = formatted_version.replace(".", "_")
-    return f"{language.id}{formatted_version}"
-
-
 class BuildGenerator(ABC):
     @abstractmethod
     def generate_repository_rules(self) -> str:
@@ -71,7 +65,7 @@ class BuildGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate_server_target(self, language: Language, groups: list[Group]) -> str:
+    def generate_server_target(self, groups: list[Group]) -> str:
         """\
         Generates the server for a particular language and set of deps.
         This has a set of deps necessary for running the server,
@@ -80,7 +74,7 @@ class BuildGenerator(ABC):
         pass
 
     @abstractmethod
-    def generate_server(self, language: Language, groups: list[Group]) -> str:
+    def generate_server(self, groups: list[Group]) -> str:
         """\
         Generates the actual server implementation for a language and a set of deps.
         E.g. for Python: an ASGI application that composes all of the endpoints,

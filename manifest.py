@@ -29,13 +29,6 @@ class Language(Enum):
         return self.value[1]
 
     @property
-    def toolchain_name(self) -> str:
-        language_id, _ = self.value
-        formatted_version = self.formatted_version()
-        formatted_version = formatted_version.replace(".", "_")
-        return f"{language_id}{formatted_version}"
-
-    @property
     def file_suffix(self) -> str:
         if self.id == "python":
             return "py"

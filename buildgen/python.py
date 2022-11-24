@@ -8,7 +8,6 @@ from packaging.requirements import Requirement
 
 from buildgen.common import BuildGenerator
 from buildgen.common import filename_as_target
-from buildgen.common import get_toolchain_name
 from config import TEMPLATES_DIRECTORY
 from manifest import Group
 from manifest import Language
@@ -16,16 +15,6 @@ from manifest import Language
 
 # TODO: `server` is essentially a reserved keyword in this setup,
 # but that's not articulated anywhere in the manifest load / validation
-
-
-def get_interpreter_name(language: Language) -> str:
-    toolchain_name = get_toolchain_name(language)
-    return f"{toolchain_name}_interpreter"
-
-
-def get_install_deps_name(language: Language) -> str:
-    toolchain_name = get_toolchain_name(language)
-    return f"{toolchain_name}_install_deps_server"
 
 
 def load_requirements(requirements_txt: str) -> list[str]:
@@ -59,10 +48,7 @@ class PythonBuildGenerator(BuildGenerator):
     def generate_toolchain(self, language: Language) -> str:
         template = self.env.get_template("toolchain.jinja2.WORKSPACE")
         return template.render(
-            toolchain_name=get_toolchain_name(language),
-            interpreter_name=get_interpreter_name(language),
             python_version=language.formatted_version(),
-            install_deps_name=get_install_deps_name(language),
         )
 
     def generate_target_deps(self, group: Group) -> str:
@@ -70,7 +56,6 @@ class PythonBuildGenerator(BuildGenerator):
         return template.render(
             group_name=group.name,
             requirements_file_target=filename_as_target(group.dependencies),
-            interpreter_name=get_interpreter_name(group.language),
         )
 
     def generate_build_rules(self) -> str:
@@ -84,15 +69,14 @@ class PythonBuildGenerator(BuildGenerator):
             requirements=load_requirements(group.dependencies),
         )
 
-    def generate_server_target(self, language: Language, groups: list[Group]) -> str:
+    def generate_server_target(self, groups: list[Group]) -> str:
         template = self.env.get_template("server_target.jinja2.BUILD")
         return template.render(
-            toolchain_name=get_toolchain_name(language),
             groups=[group.name for group in groups],
             requirements=load_requirements("requirements.txt"),
         )
 
-    def generate_server(self, language: Language, groups: list[Group]) -> str:
+    def generate_server(self, groups: list[Group]) -> str:
         template = self.env.get_template("server.jinja2")
 
         targets = []
@@ -108,5 +92,4 @@ class PythonBuildGenerator(BuildGenerator):
 
         return template.render(
             targets=targets,
-            toolchain_name=get_toolchain_name(language),
         )

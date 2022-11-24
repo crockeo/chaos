@@ -11,4 +11,4 @@ app.include_router({{ fully_qualified_name }}.router)
 
 
 if __name__ == "__main__":
-    uvicorn.run("{{ toolchain_name }}_server:app", port=8080, log_level="info")
+    uvicorn.run("server:app", port=8080, log_level="info")
