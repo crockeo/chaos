@@ -16,7 +16,9 @@ import yaml
 
 
 class Language(Enum):
-    GO_1_19 = ("go", (1, 19, 3))
+    # TODO(gobranch): target a minor version instead of a patch version
+    # and then automatically populate the patch version
+    GO_1_19_3 = ("go", (1, 19, 3))
     PYTHON_3_9 = ("python", (3, 9))
     PYTHON_3_10 = ("python", (3, 10))
     PYTHON_3_11 = ("python", (3, 11))
@@ -31,6 +33,8 @@ class Language(Enum):
 
     @property
     def file_suffix(self) -> str:
+        if self.id == "go":
+            return "go"
         if self.id == "python":
             return "py"
         # TODO: exception type
