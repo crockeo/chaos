@@ -9,6 +9,7 @@ from typing import Callable
 import click
 
 import buildgen
+from manifest import Language
 from manifest import Manifest
 
 
@@ -17,7 +18,9 @@ def load_manifest(manifest: str) -> Manifest:
     return Manifest.load(cwd / manifest)
 
 
-def do_buildgen(manifest: Manifest, target_path: Path) -> None:
+def do_buildgen(manifest: Manifest, language: Language, target_path: Path) -> None:
+    manifest.groups = [group for group in manifest.groups if group.language == language]
+
     cwd = Path.cwd()
     buildgen.generate_build(target_path, manifest)
 
@@ -25,6 +28,13 @@ def do_buildgen(manifest: Manifest, target_path: Path) -> None:
     shutil.copy(cwd / "requirements.txt", target_path / "requirements.txt")
     for path in manifest.iter_files():
         shutil.copy(cwd / path, target_path / path)
+
+
+def get_available_languages() -> list[str]:
+    available_languages = []
+    for language in Language:
+        available_languages.append(language.format())
+    return available_languages
 
 
 # NOTE: we don't really care about type erasure here,
@@ -35,6 +45,11 @@ def arguments(fn: Callable[..., Any]) -> Callable[..., Any]:
         "--manifest",
         required=True,
         type=click.Path(exists=True, dir_okay=False, readable=True),
+    )
+    @click.option(
+        "--language",
+        required=True,
+        type=click.Choice(get_available_languages()),
     )
     @functools.wraps(fn)
     def _fn(*args, **kwargs):
@@ -51,23 +66,23 @@ def cli():
 @cli.command()
 @click.option("--output-dir", type=click.Path(file_okay=False), required=True)
 @arguments
-def generate(manifest: str, output_dir: str) -> None:
+def generate(manifest: str, language: str, output_dir: str) -> None:
     manifest_obj = load_manifest(manifest)
     output_path = Path(output_dir)
     if not output_path.is_absolute():
         output_path = Path.cwd() / output_path
     output_path.mkdir(parents=True, exist_ok=True)
-    do_buildgen(manifest_obj, output_path)
+    do_buildgen(manifest_obj, Language.from_str(language), output_path)
 
 
 @cli.command()
 @click.option("--target", required=True, type=str)
 @arguments
-def run(manifest: str, target: str) -> None:
+def run(manifest: str, language: str, target: str) -> None:
     manifest_obj = load_manifest(manifest)
     with tempfile.TemporaryDirectory() as output_dir:
         output_path = Path(output_dir)
-        do_buildgen(manifest_obj, output_path)
+        do_buildgen(manifest_obj, Language.from_str(language), output_path)
         subprocess.check_call(
             (
                 "bazelisk",
