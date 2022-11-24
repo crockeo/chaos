@@ -15,6 +15,12 @@ import yaml
 # https://docs.python.org/3/library/typing.html#introspection-helpers
 
 
+def make_absolute(path: Path) -> Path:
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
 class Language(Enum):
     # TODO(gobranch): target a minor version instead of a patch version
     # and then automatically populate the patch version
@@ -72,6 +78,14 @@ class Group:
     filename: str
     endpoints: list[Endpoint]
     dependencies: str
+
+    @property
+    def filename_path(self) -> Path:
+        return make_absolute(Path(self.filename))
+
+    @property
+    def dependencies_path(self) -> Path:
+        return make_absolute(Path(self.dependencies))
 
     @staticmethod
     def from_dict(raw_group: dict[str, Any]) -> Group:

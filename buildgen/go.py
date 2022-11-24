@@ -1,3 +1,6 @@
+import json
+import subprocess
+
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
 
@@ -6,6 +9,23 @@ from buildgen.common import filename_as_target
 from config import TEMPLATES_DIRECTORY
 from manifest import Group
 from manifest import Language
+
+
+def get_import_path(group: Group) -> str:
+    # TODO: parse this without relying on the Go toolchain?
+    raw_output = subprocess.check_output(
+        (
+            "go",
+            "mod",
+            "edit",
+            "-json",
+        ),
+        cwd=group.dependencies_path.parent,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    go_mod = json.loads(raw_output)
+    return go_mod["Module"]["Path"]
 
 
 class GoBuildGenerator(BuildGenerator):
@@ -40,6 +60,7 @@ class GoBuildGenerator(BuildGenerator):
         return template.render(
             group_name=group.name,
             group_target=filename_as_target(group.filename),
+            import_path=get_import_path(group),
             # TODO(gobranch): how to do requirements here?
             requirements=[],
         )
