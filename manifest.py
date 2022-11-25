@@ -22,8 +22,6 @@ def make_absolute(path: Path) -> Path:
 
 
 class Language(Enum):
-    # TODO(gobranch): target a minor version instead of a patch version
-    # and then automatically populate the patch version
     GO_1_19_3 = ("go", (1, 19, 3))
     PYTHON_3_9 = ("python", (3, 9))
     PYTHON_3_10 = ("python", (3, 10))
@@ -46,9 +44,17 @@ class Language(Enum):
         # TODO: exception type
         raise NotImplementedError
 
+    def short_formatted_version(self) -> str:
+        _, version = self.value
+        return ".".join(str(part) for part in version[:2])
+
     def formatted_version(self) -> str:
         _, version = self.value
         return ".".join(str(part) for part in version)
+
+    def short_format(self) -> str:
+        language, _ = self.value
+        return f"{language}{self.short_formatted_version()}"
 
     def format(self) -> str:
         language, _ = self.value
@@ -58,7 +64,7 @@ class Language(Enum):
     def from_str(raw: str) -> Language:
         language_map = {}
         for case in Language:
-            language_map[case.format()] = case
+            language_map[case.short_format()] = case
         return language_map[raw]
 
 

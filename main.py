@@ -33,7 +33,7 @@ def do_buildgen(manifest: Manifest, language: Language, target_path: Path) -> No
 def get_available_languages() -> list[str]:
     available_languages = []
     for language in Language:
-        available_languages.append(language.format())
+        available_languages.append(language.short_format())
     return available_languages
 
 

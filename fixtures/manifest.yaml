@@ -13,7 +13,7 @@ groups:
       - name: router
     dependencies: fixtures/echo_requirements.txt
   - name: hello_go
-    language: go1.19.3
+    language: go1.19
     filename: fixtures/hello.go
     endpoints:
       - name: HelloWorld
