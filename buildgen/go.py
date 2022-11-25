@@ -185,7 +185,7 @@ class GoBuildGenerator(BuildGenerator):
         template = self.env.get_template("server_target.jinja2.BUILD")
         return template.render(
             groups=[group.name for group in groups],
-            # TODO(gobranch): how to do requirements here?
+            # TODO: add in deps here based on a go.mod if it exists
             requirements=[],
         )
 
