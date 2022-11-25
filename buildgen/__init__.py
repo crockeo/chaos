@@ -23,7 +23,6 @@ def generate_workspace(language: Language, manifest: Manifest) -> str:
 
     sections = [
         HTTP_ARCHIVE,
-        generator.generate_repository_rules(),
         generator.generate_toolchain(language),
     ]
     for group in manifest.groups:

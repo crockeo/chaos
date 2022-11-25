@@ -21,15 +21,6 @@ def filename_as_target(filename: str) -> str:
 
 class BuildGenerator(ABC):
     @abstractmethod
-    def generate_repository_rules(self) -> str:
-        """\
-        Loads the set of repository rules which are necessary
-        to build projects in a particular language.
-        E.g. rules_go or rules_python.
-        """
-        pass
-
-    @abstractmethod
     def generate_toolchain(self, language: Language) -> str:
         """\
         Generates a particular toolchain for the target language.

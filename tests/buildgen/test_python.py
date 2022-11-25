@@ -5,11 +5,11 @@ from manifest import Group
 from manifest import Language
 
 
-def test_python_build_generator__repository_rules():
+def test_python_build_generator__toolchain():
     generator = python.PythonBuildGenerator()
-    repository_rules = generator.generate_repository_rules()
+    toolchain = generator.generate_toolchain(Language.PYTHON_3_10)
 
-    expected_repository_rules = """\
+    expected_toolchain = """\
     http_archive(
         name = "rules_python",
         sha256 = "8c8fe44ef0a9afc256d1e75ad5f448bb59b81aba149b8958f02f7b3a98f5d9b4",
@@ -18,16 +18,7 @@ def test_python_build_generator__repository_rules():
     )
     load("@rules_python//python:pip.bzl", "pip_parse")
     load("@rules_python//python:repositories.bzl", "python_register_toolchains")
-    """
-    expected_repository_rules = textwrap.dedent(expected_repository_rules)
-    assert repository_rules == expected_repository_rules
 
-
-def test_python_build_generator__toolchain():
-    generator = python.PythonBuildGenerator()
-    toolchain = generator.generate_toolchain(Language.PYTHON_3_10)
-
-    expected_toolchain = """\
     python_register_toolchains(
         name = "python_toolchain",
         python_version = "3.10",
