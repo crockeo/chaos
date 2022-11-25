@@ -4,7 +4,7 @@ go_library(
     importpath = "{{ import_path }}",
     deps = [
         {% for requirement in requirements %}
-        "{{ requirement }}",
+        "@{{ requirement.target_name }}//:go_default_library",
         {% endfor %}
     ],
 )
