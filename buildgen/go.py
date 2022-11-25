@@ -142,6 +142,9 @@ def _get_go_require(group: Group) -> list[GoRequire]:
     return [GoRequire.from_dict(require) for require in go_mod["Require"]]
 
 
+# TODO(gobranch): i'm pretty sure that the current setup w/ deps will break
+# if any deps are not at the very root of a project, but i'm not sure.
+# try depending on something emdedded into a library and see waht happens
 class GoBuildGenerator(BuildGenerator):
     def __init__(self):
         self.env = Environment(
