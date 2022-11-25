@@ -12,11 +12,8 @@ from manifest import Manifest
 
 
 class MockGenerator(BuildGenerator):
-    def generate_repository_rules(self) -> str:
-        return "mock_repository_rules()\n"
-
     def generate_toolchain(self, language: Language) -> str:
-        return "mock_toolchain()\n"
+        return f"mock_toolchain({language.format()})\n"
 
     def generate_target_deps(self, group: Group) -> str:
         return f"mock_target_deps_{group.name}()\n"
@@ -61,9 +58,7 @@ def test_generate_workspace__one(use_mock_generator):
     expected_workspace = """\
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-    mock_repository_rules()
-
-    mock_toolchain()
+    mock_toolchain(python3.11)
 
     mock_target_deps_test()
     """
@@ -95,9 +90,7 @@ def test_generate_workspace__multiple(use_mock_generator):
     expected_workspace = """\
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-    mock_repository_rules()
-
-    mock_toolchain()
+    mock_toolchain(python3.11)
 
     mock_target_deps_test()
 

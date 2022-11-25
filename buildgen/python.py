@@ -42,9 +42,6 @@ class PythonBuildGenerator(BuildGenerator):
             lstrip_blocks=True,
         )
 
-    def generate_repository_rules(self) -> str:
-        return self.env.get_template("repository_rules.jinja2.WORKSPACE").render()
-
     def generate_toolchain(self, language: Language) -> str:
         template = self.env.get_template("toolchain.jinja2.WORKSPACE")
         return template.render(
