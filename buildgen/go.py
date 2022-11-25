@@ -74,5 +74,17 @@ class GoBuildGenerator(BuildGenerator):
         )
 
     def generate_server(self, groups: list[Group]) -> str:
-        # TODO(gobranch): how do we want to do this? how is it going to work? :(
-        return self.env.get_template("server.jinja2").render()
+        targets = []
+        endpoints = []
+        for group in groups:
+            import_name = get_import_path(group)
+            fully_qualified_name = import_name.replace(".", "_").replace("/", "_")
+            targets.append((import_name, fully_qualified_name))
+            for endpoint in group.endpoints:
+                endpoints.append((fully_qualified_name, endpoint.name))
+
+        template = self.env.get_template("server.jinja2")
+        return template.render(
+            targets=targets,
+            endpoints=endpoints,
+        )
