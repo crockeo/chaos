@@ -18,18 +18,13 @@ from config import TEMPLATES_DIRECTORY
 from manifest import Group
 from manifest import Language
 
-
-# TODO(gobranch): what's the difference between go.sum versions w/ and w/o the go.mod?
-# what happens if i strip out the version?
-# is the version appropriate to include in a go_repository rule?
-
-# TODO(gobranch): should i prefer versions w/ or w/o the `/go.mod` suffix on them?
-
 # TODO(gobranch): what happens if multiple targets depend on the same dependencies?
 # we can't declare multiple of the same go_repository dependencies.
 # and we don't want to!
 
 # TODO(gobranch): let the server have deps of its own!
+
+# TODO(gobranch): handle replace directives in go modules(?)
 
 
 def _target_name(import_path: str) -> str:
@@ -108,7 +103,7 @@ class GoSumEntry:
 
         semver = tuple(int(version) for version in parts[0].split("."))
         if len(parts) == 2:
-            datetime_match = DATETIME_RE.match(parts[1])
+            datetime_match = DATETIME_RE.fullmatch(parts[1])
             if datetime_match is None:
                 # TODO: type
                 raise Exception("asdfasdf")
@@ -155,7 +150,14 @@ class GoSum:
             version = parts[1]
             sum = parts[2]
 
-            version, _, _ = version.partition("/")
+            # When go.sum versions end with a `/go.mod`
+            # the following hash refers only to the go.mod.
+            # We can't use these while creating `go_repository` targets
+            # and so we filter them out.
+            # Ref: https://go.dev/ref/mod#go-sum-files
+            _, _, go_mod = version.partition("/")
+            if go_mod:
+                continue
 
             entries.append(GoSumEntry(path, version, sum))
         return GoSum(entries)
