@@ -22,7 +22,7 @@ def make_absolute(path: Path) -> Path:
 
 
 class Language(Enum):
-    GO_1_19_3 = ("go", (1, 19, 3))
+    GO_1_19 = ("go", (1, 19, 3))
     PYTHON_3_9 = ("python", (3, 9))
     PYTHON_3_10 = ("python", (3, 10))
     PYTHON_3_11 = ("python", (3, 11))

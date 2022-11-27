@@ -19,8 +19,21 @@ from manifest import Group
 from manifest import Language
 
 
+# TODO(gobranch): what's the difference between go.sum versions w/ and w/o the go.mod?
+# what happens if i strip out the version?
+# is the version appropriate to include in a go_repository rule?
+
+# TODO(gobranch): should i prefer versions w/ or w/o the `/go.mod` suffix on them?
+
+# TODO(gobranch): what happens if multiple targets depend on the same dependencies?
+# we can't declare multiple of the same go_repository dependencies.
+# and we don't want to!
+
+# TODO(gobranch): let the server have deps of its own!
+
+
 def _target_name(import_path: str) -> str:
-    return re.sub(r"[.-_]", "_", import_path)
+    return re.sub(r"[.\-_/]", "_", import_path)
 
 
 @dataclass(frozen=True)
@@ -38,6 +51,38 @@ class GoRequire:
             raw_go_require["Path"],
             raw_go_require["Version"],
         )
+
+
+@dataclass(frozen=True)
+class GoMod:
+    import_path: str
+    requirements: list[GoRequire]
+
+    @staticmethod
+    def from_dict(raw_go_mod: dict[str, Any]) -> GoMod:
+        return GoMod(
+            import_path=raw_go_mod["Module"]["Path"],
+            requirements=[
+                GoRequire.from_dict(raw_go_require)
+                for raw_go_require in raw_go_mod["Require"]
+            ],
+        )
+
+    @lru_cache
+    @staticmethod
+    def load(go_mod_path: Path) -> GoMod:
+        raw_go_mod = subprocess.check_output(
+            (
+                "go",
+                "mod",
+                "edit",
+                "-json",
+            ),
+            cwd=go_mod_path.parent,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        return GoMod.from_dict(json.loads(raw_go_mod))
 
 
 DATETIME_RE = re.compile(
@@ -116,32 +161,6 @@ class GoSum:
         return GoSum(entries)
 
 
-@lru_cache
-def _load_go_mod(go_mod_dir: Path) -> dict[str, Any]:
-    raw_go_mod = subprocess.check_output(
-        (
-            "go",
-            "mod",
-            "edit",
-            "-json",
-        ),
-        cwd=go_mod_dir,
-        text=True,
-        stderr=subprocess.DEVNULL,
-    )
-    return json.loads(raw_go_mod)
-
-
-def _get_import_path(group: Group) -> str:
-    go_mod = _load_go_mod(group.dependencies_path.parent)
-    return go_mod["Module"]["Path"]
-
-
-def _get_go_require(group: Group) -> list[GoRequire]:
-    go_mod = _load_go_mod(group.dependencies_path.parent)
-    return [GoRequire.from_dict(require) for require in go_mod["Require"]]
-
-
 # TODO(gobranch): i'm pretty sure that the current setup w/ deps will break
 # if any deps are not at the very root of a project, but i'm not sure.
 # try depending on something emdedded into a library and see waht happens
@@ -171,14 +190,14 @@ class GoBuildGenerator(BuildGenerator):
         return self.env.get_template("build_rules.jinja2.BUILD").render()
 
     def generate_target(self, group: Group) -> str:
-        go_require = _get_go_require(group)
+        go_mod = GoMod.load(group.dependencies_path)
 
         template = self.env.get_template("target.jinja2.BUILD")
         return template.render(
             group_name=group.name,
             group_target=filename_as_target(group.filename),
-            import_path=_get_import_path(group),
-            requirements=go_require,
+            import_path=go_mod.import_path,
+            requirements=go_mod.requirements,
         )
 
     def generate_server_target(self, groups: list[Group]) -> str:
@@ -193,9 +212,11 @@ class GoBuildGenerator(BuildGenerator):
         targets = []
         endpoints = []
         for group in groups:
-            import_name = _get_import_path(group)
-            fully_qualified_name = import_name.replace(".", "_").replace("/", "_")
-            targets.append((import_name, fully_qualified_name))
+            go_mod = GoMod.load(group.dependencies_path)
+            fully_qualified_name = go_mod.import_path.replace(".", "_").replace(
+                "/", "_"
+            )
+            targets.append((go_mod.import_path, fully_qualified_name))
             for endpoint in group.endpoints:
                 endpoints.append((fully_qualified_name, endpoint.name))
 
