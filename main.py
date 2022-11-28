@@ -33,7 +33,7 @@ def do_buildgen(manifest: Manifest, language: Language, target_path: Path) -> No
 def get_available_languages() -> list[str]:
     available_languages = []
     for language in Language:
-        available_languages.append(language.format())
+        available_languages.append(language.short_format())
     return available_languages
 
 
@@ -79,6 +79,10 @@ def generate(manifest: str, language: str, output_dir: str) -> None:
 @arguments
 def run(manifest: str, language: str) -> None:
     manifest_obj = load_manifest(manifest)
+
+    cache_dir = Path.home() / ".cache" / "bazel_repositories"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
     with tempfile.TemporaryDirectory() as output_dir:
         output_path = Path(output_dir)
         do_buildgen(manifest_obj, Language.from_str(language), output_path)
@@ -87,6 +91,7 @@ def run(manifest: str, language: str) -> None:
                 "bazelisk",
                 "run",
                 "//:server",
+                f"--repository_cache={cache_dir}",
             ),
             cwd=output_path,
         )

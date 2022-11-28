@@ -15,7 +15,14 @@ import yaml
 # https://docs.python.org/3/library/typing.html#introspection-helpers
 
 
+def make_absolute(path: Path) -> Path:
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
 class Language(Enum):
+    GO_1_19 = ("go", (1, 19, 3))
     PYTHON_3_9 = ("python", (3, 9))
     PYTHON_3_10 = ("python", (3, 10))
     PYTHON_3_11 = ("python", (3, 11))
@@ -30,14 +37,24 @@ class Language(Enum):
 
     @property
     def file_suffix(self) -> str:
+        if self.id == "go":
+            return "go"
         if self.id == "python":
             return "py"
         # TODO: exception type
         raise NotImplementedError
 
+    def short_formatted_version(self) -> str:
+        _, version = self.value
+        return ".".join(str(part) for part in version[:2])
+
     def formatted_version(self) -> str:
         _, version = self.value
         return ".".join(str(part) for part in version)
+
+    def short_format(self) -> str:
+        language, _ = self.value
+        return f"{language}{self.short_formatted_version()}"
 
     def format(self) -> str:
         language, _ = self.value
@@ -47,7 +64,7 @@ class Language(Enum):
     def from_str(raw: str) -> Language:
         language_map = {}
         for case in Language:
-            language_map[case.format()] = case
+            language_map[case.short_format()] = case
         return language_map[raw]
 
 
@@ -67,6 +84,14 @@ class Group:
     filename: str
     endpoints: list[Endpoint]
     dependencies: str
+
+    @property
+    def filename_path(self) -> Path:
+        return make_absolute(Path(self.filename))
+
+    @property
+    def dependencies_path(self) -> Path:
+        return make_absolute(Path(self.dependencies))
 
     @staticmethod
     def from_dict(raw_group: dict[str, Any]) -> Group:

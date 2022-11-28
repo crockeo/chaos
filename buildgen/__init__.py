@@ -2,6 +2,7 @@ import textwrap
 from collections import defaultdict
 from pathlib import Path
 
+from buildgen.go import GoBuildGenerator
 from buildgen.python import PythonBuildGenerator
 from manifest import Language
 from manifest import Manifest
@@ -12,6 +13,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 """
 
 LANGUAGE_TO_GENERATOR = {
+    "go": GoBuildGenerator(),
     "python": PythonBuildGenerator(),
 }
 

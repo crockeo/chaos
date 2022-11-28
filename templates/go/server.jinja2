@@ -1,0 +1,18 @@
+package main
+
+import (
+	"log"
+	"net/http"
+
+	{% for import_name, fully_qualified_name in targets %}
+	{{ fully_qualified_name }} "{{ import_name }}"
+	{% endfor %}
+)
+
+func main() {
+	{% for fully_qualified_name, endpoint in endpoints %}
+	{{ fully_qualified_name }}_{{ endpoint }} := {{ fully_qualified_name }}.New{{ endpoint }}()
+	http.Handle({{ fully_qualified_name }}.{{ endpoint }}Pattern, {{ fully_qualified_name }}_{{ endpoint }})
+	{% endfor %}
+	log.Fatal(http.ListenAndServe("127.0.0.1:8080", nil))
+}
